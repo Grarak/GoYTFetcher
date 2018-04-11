@@ -7,8 +7,8 @@
 
 # IntelliJ project files
 .idea
-!.idea/runConfigurations
 *.iml
 out
 
 files
+ytfetcher*

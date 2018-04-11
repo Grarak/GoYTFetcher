@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Testing" type="GoApplicationRunConfiguration" factoryName="Go Application">
+    <module name="testing" />
+    <working_directory value="$PROJECT_DIR$/testing" />
+    <go_parameters value="-i" />
+    <kind value="DIRECTORY" />
+    <filePath value="$PROJECT_DIR$/testing/testing.go" />
+    <directory value="$PROJECT_DIR$/testing" />
+    <output_directory value="$PROJECT_DIR$/out" />
+    <method />
+  </configuration>
+</component>
