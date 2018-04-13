@@ -30,8 +30,12 @@ type PlaylistNamesDB struct {
 }
 
 func newPlaylistNamesDB(db *sql.DB, rwLock *sync.RWMutex) (*PlaylistNamesDB, error) {
-	err := createTable(db, TablePlaylistNames, ColumnApikey,
-		ColumnName, ColumnPublic)
+	cmd := newTableBuilder(TablePlaylistNames).
+		addForeignKey(ForeignKeyApikey).
+		addPrimaryKey(ColumnName).
+		addColumn(ColumnPublic).build()
+
+	_, err := db.Exec(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -122,10 +126,5 @@ func (playlistNamesDB *PlaylistNamesDB) DeletePlaylistName(playlistName Playlist
 		TablePlaylistNames,
 		ColumnApikey.name, playlistName.ApiKey,
 		ColumnName.name, playlistName.Name))
-	if err != nil {
-		return err
-	}
-
-	playlistsDB := GetDatabase().PlaylistsDB
-	return playlistsDB.DeletePlaylist(playlistName.ApiKey, playlistName.Name)
+	return err
 }

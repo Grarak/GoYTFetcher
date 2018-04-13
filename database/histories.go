@@ -28,7 +28,12 @@ type HistoriesDB struct {
 }
 
 func newHistoriesDB(db *sql.DB, rwLock *sync.RWMutex) (*HistoriesDB, error) {
-	err := createTable(db, TableHistories, ColumnApikey, ColumnId, ColumnDate)
+	cmd := newTableBuilder(TableHistories).
+		addForeignKey(ForeignKeyApikey).
+		addPrimaryKey(ColumnId).
+		addColumn(ColumnDate).build()
+
+	_, err := db.Exec(cmd)
 	if err != nil {
 		return nil, err
 	}

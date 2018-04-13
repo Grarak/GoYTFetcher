@@ -29,7 +29,15 @@ type PlaylistsDB struct {
 }
 
 func newPlaylistsDB(db *sql.DB, rwLock *sync.RWMutex) (*PlaylistsDB, error) {
-	err := createTable(db, TablePlaylists, ColumnApikey, ColumnName, ColumnId)
+	foreignKeyApikey := ForeignKeyApikey
+	foreignKeyApikey.referenceTable = TablePlaylistNames
+
+	cmd := newTableBuilder(TablePlaylists).
+		addForeignKey(foreignKeyApikey).
+		addForeignKey(ForeignKeyName).
+		addColumn(ColumnId).build()
+
+	_, err := db.Exec(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -100,17 +108,5 @@ func (playlistsDB *PlaylistsDB) DeletePlaylistLink(playlistLink PlaylistLink) er
 		ColumnApikey.name, playlistLink.ApiKey,
 		ColumnName.name, playlistLink.Name,
 		ColumnId.name, playlistLink.Id))
-	return err
-}
-
-func (playlistsDB *PlaylistsDB) DeletePlaylist(apiKey, name string) error {
-	playlistsDB.rwLock.Lock()
-	defer playlistsDB.rwLock.Unlock()
-
-	_, err := playlistsDB.db.Exec(fmt.Sprintf(
-		"DELETE FROM %s WHERE %s = '%s' AND %s = '%s'",
-		TablePlaylists,
-		ColumnApikey.name, apiKey,
-		ColumnName.name, name))
 	return err
 }

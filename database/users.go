@@ -72,13 +72,15 @@ type UserDB struct {
 }
 
 func newUserDB(db *sql.DB, rwLock *sync.RWMutex) (*UserDB, error) {
-	err := createTablesWithPrimaryKeys(db, []column{ColumnApikey, ColumnName}, TableUsers)
-	if err != nil {
-		return nil, err
-	}
+	cmd := newTableBuilder(TableUsers).
+		addUniqueKey(ColumnApikey).
+		addUniqueKey(ColumnName).
+		addColumn(ColumnPasswordSalt).
+		addColumn(ColumnPasswordHash).
+		addColumn(ColumnAdmin).
+		addColumn(ColumnVerified).build()
 
-	err = insertRows(db, TableUsers, ColumnPasswordSalt,
-		ColumnPasswordHash, ColumnAdmin, ColumnVerified)
+	_, err := db.Exec(cmd)
 	if err != nil {
 		return nil, err
 	}
@@ -120,7 +122,7 @@ func (userDB *UserDB) AddUser(user User) (User, int) {
 	userDB.rwLock.Lock()
 	defer userDB.rwLock.Unlock()
 
-	if _, err := userDB._findUserByName(user.Name, false); err == nil {
+	if _, err := userDB.findUserByName(user.Name); err == nil {
 		return user, utils.StatusUserAlreadyExists
 	}
 
@@ -185,7 +187,7 @@ func (userDB *UserDB) GetUserWithPassword(name, password string) (User, int) {
 
 func (userDB *UserDB) generateApiToken() string {
 	token := utils.ToURLBase64(utils.GenerateRandom(32))
-	if _, err := userDB.FindUserByApiKey(token); err == nil {
+	if _, err := userDB.findUserByApiKey(token); err == nil {
 		return userDB.generateApiToken()
 	}
 	return token
@@ -194,7 +196,10 @@ func (userDB *UserDB) generateApiToken() string {
 func (userDB *UserDB) FindUserByApiKey(apiKey string) (User, error) {
 	userDB.rwLock.RLock()
 	defer userDB.rwLock.RUnlock()
+	return userDB.findUserByApiKey(apiKey)
+}
 
+func (userDB *UserDB) findUserByApiKey(apiKey string) (User, error) {
 	users, err := userDB.createUserWithWhere(
 		ColumnApikey.name + " = " + "'" + apiKey + "'")
 	if len(users) > 0 {
@@ -204,15 +209,12 @@ func (userDB *UserDB) FindUserByApiKey(apiKey string) (User, error) {
 }
 
 func (userDB *UserDB) FindUserByName(name string) (User, error) {
-	return userDB._findUserByName(name, true)
+	userDB.rwLock.RLock()
+	defer userDB.rwLock.RUnlock()
+	return userDB.findUserByName(name)
 }
 
-func (userDB *UserDB) _findUserByName(name string, lock bool) (User, error) {
-	if lock {
-		userDB.rwLock.RLock()
-		defer userDB.rwLock.RUnlock()
-	}
-
+func (userDB *UserDB) findUserByName(name string) (User, error) {
 	users, err := userDB.createUserWithWhere(
 		ColumnName.name + " = " + "'" + name + "' COLLATE NOCASE")
 	if len(users) > 0 {

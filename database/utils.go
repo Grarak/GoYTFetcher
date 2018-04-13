@@ -17,40 +17,9 @@ func rowCountInTable(db *sql.DB, table string) (int, error) {
 	return count, err
 }
 
-func createTablesWithPrimaryKeys(db *sql.DB, primaryKeys []column, tables ...string) error {
-	cmd := "CREATE TABLE IF NOT EXISTS %s("
-	for _, primaryKey := range primaryKeys {
-		cmd += primaryKey.name + " " + string(primaryKey.dataType) + " NOT NULL,"
-	}
-	cmd += "PRIMARY KEY("
-	for _, primaryKey := range primaryKeys {
-		cmd += primaryKey.name + ","
-	}
-	cmd = cmd[0:len(cmd)-1] + "))"
-
-	for _, table := range tables {
-		_, err := db.Exec(fmt.Sprintf(cmd, table))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func createTable(db *sql.DB, table string, columns ...column) error {
-	cmd := "CREATE TABLE IF NOT EXISTS " + table + "("
+func insertColumns(db *sql.DB, table string, columns ...column) error {
 	for _, column := range columns {
-		cmd += column.name + " " + string(column.dataType) + ","
-	}
-	cmd = cmd[0:len(cmd)-1] + ")"
-
-	_, err := db.Exec(cmd)
-	return err
-}
-
-func insertRows(db *sql.DB, table string, columns ...column) error {
-	for _, column := range columns {
-		if tableHashColumn(db, table, column.name) {
+		if tableContainsColumn(db, table, column.name) {
 			continue
 		}
 		_, err := db.Exec(fmt.Sprintf(
@@ -63,7 +32,7 @@ func insertRows(db *sql.DB, table string, columns ...column) error {
 	return nil
 }
 
-func tableHashColumn(db *sql.DB, table, column string) bool {
+func tableContainsColumn(db *sql.DB, table, column string) bool {
 	row, err := db.Query("PRAGMA table_info(" + table + ")")
 	defer row.Close()
 	if err != nil {

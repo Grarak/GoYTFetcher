@@ -18,22 +18,7 @@ func main() {
 	flag.IntVar(&port, "p", 6713, "Which port to use")
 	flag.Parse()
 
-	count := 0
-	channel := make(chan bool)
-	search := func(i int) {
-		searchYoutube("YQRdLLsPhzJg6_KRq4B2gvfX97IRsI-Tso1F0GDhZ9M=", fmt.Sprintf("twenty one pilots"))
-		channel <- true
-	}
-	for i := 0; i < 1000; i++ {
-		go search(i)
-	}
-	for {
-		<-channel
-		count++
-		if count == 1000 {
-			break
-		}
-	}
+	createUsers()
 }
 
 func createUsers() {
@@ -44,13 +29,13 @@ func createUsers() {
 			"12345")
 		channel <- true
 	}
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 100; i++ {
 		go signup(i)
 	}
 	for {
 		<-channel
 		count++
-		if count == 1000 {
+		if count == 100 {
 			break
 		}
 	}

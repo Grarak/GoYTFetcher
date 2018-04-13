@@ -32,6 +32,9 @@ func GetDatabase() *Database {
 	db, err := sql.Open("sqlite3", utils.DATADB)
 	utils.Panic(err)
 
+	_, err = db.Exec("PRAGMA foreign_keys = ON")
+	utils.Panic(err)
+
 	rwLock := &sync.RWMutex{}
 
 	userDB, err := newUserDB(db, rwLock)

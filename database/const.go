@@ -7,6 +7,14 @@ type column struct {
 	dataType dataType
 }
 
+type foreignKey struct {
+	name           string
+	dataType       dataType
+	referenceTable string
+	referenceKey   string
+	primaryKey     bool
+}
+
 func text() dataType {
 	return "text"
 }
@@ -28,3 +36,8 @@ var ColumnVerified = column{"verified", boolean()}
 var ColumnPublic = column{"public", boolean()}
 var ColumnId = column{"id", text()}
 var ColumnDate = column{"date", datetime()}
+
+var ForeignKeyApikey = foreignKey{ColumnApikey.name, text(), TableUsers,
+	ColumnApikey.name, true}
+var ForeignKeyName = foreignKey{ColumnName.name, text(), TablePlaylistNames,
+	ColumnName.name, true}
