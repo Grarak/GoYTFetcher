@@ -37,6 +37,10 @@ type YoutubeDB struct {
 	searches        sync.Map
 
 	deleteCacheLock sync.RWMutex
+
+	charts            []YoutubeSearchResult
+	chartsLock        sync.RWMutex
+	chartsLastFetched time.Time
 }
 
 func newYoutubeDB() (*YoutubeDB, error) {
@@ -164,6 +168,26 @@ func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearc
 
 func (youtubeDB *YoutubeDB) GetYoutubeInfo(id string) (YoutubeSearchResult, error) {
 	return getYoutubeVideoInfo(id, youtubeDB.ytKey)
+}
+
+func (youtubeDB *YoutubeDB) GetYoutubeCharts() ([]YoutubeSearchResult, error) {
+	youtubeDB.chartsLock.RLock()
+	if len(youtubeDB.charts) == 0 || youtubeDB.chartsLastFetched.Day() != time.Now().Day() {
+		youtubeDB.chartsLock.RUnlock()
+		youtubeDB.chartsLock.Lock()
+		defer youtubeDB.chartsLock.Unlock()
+
+		youtubeDB.chartsLastFetched = time.Now()
+		charts, err := getYoutubeCharts(youtubeDB.ytKey)
+		if err != nil {
+			return nil, err
+		}
+		youtubeDB.charts = charts
+		return charts, nil
+	}
+
+	defer youtubeDB.chartsLock.RUnlock()
+	return youtubeDB.charts, nil
 }
 
 type rankingInterface interface {

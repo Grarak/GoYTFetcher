@@ -15,7 +15,6 @@ import (
 	"net/url"
 	"github.com/rylio/ytdl"
 	"io/ioutil"
-	"encoding/json"
 	"unicode"
 	"strconv"
 )
@@ -226,15 +225,24 @@ func parseYoutubeSearchFromURL(searchUrl string, matcher *regexp.Regexp) ([]stri
 }
 
 func getYoutubeVideoInfo(id, apiKey string) (YoutubeSearchResult, error) {
-	var result YoutubeSearchResult
-	var err error = utils.Error("No results!")
-	if !utils.StringIsEmpty(apiKey) {
+	result, err := getYoutubeVideoInfoFromYtdl(id)
+	if err != nil && !utils.StringIsEmpty(apiKey) {
 		result, err = getYoutubeVideoInfoFromApi(id, apiKey)
 	}
-	if err != nil {
-		result, err = getYoutubeVideoInfoFromYtdl(id)
-	}
 	return result, err
+}
+
+func getYoutubeVideoInfoFromYtdl(id string) (YoutubeSearchResult, error) {
+	info, err := ytdl.GetVideoInfoFromID(id)
+	if err != nil {
+		return YoutubeSearchResult{}, err
+	}
+
+	seconds := int(info.Duration.Seconds()) % 60
+	minutes := int(info.Duration.Minutes())
+	return YoutubeSearchResult{info.Title, id,
+		info.GetThumbnailURL(ytdl.ThumbnailQualityDefault).String(),
+		utils.FormatMinutesSeconds(minutes, seconds)}, nil
 }
 
 func getYoutubeVideoInfoFromApi(id, apiKey string) (YoutubeSearchResult, error) {
@@ -243,32 +251,6 @@ func getYoutubeVideoInfoFromApi(id, apiKey string) (YoutubeSearchResult, error) 
 	query.Set("id", id)
 	query.Set("part", "snippet,contentDetails")
 	query.Set("key", apiKey)
-
-	type Thumbnail struct {
-		Url string `json:"url"`
-	}
-
-	type Thumbnails struct {
-		Default Thumbnail `json:"default"`
-	}
-
-	type Snippet struct {
-		Title      string     `json:"title"`
-		Thumbnails Thumbnails `json:"thumbnails"`
-	}
-
-	type ContentDetails struct {
-		Duration string `json:"duration"`
-	}
-
-	type YoutubeItem struct {
-		Snippet        Snippet        `json:"snippet"`
-		ContentDetails ContentDetails `json:"contentDetails"`
-	}
-
-	type Response struct {
-		Items []YoutubeItem `json:"items"`
-	}
 
 	res, err := http.Get(infoUrl + query.Encode())
 	if err != nil {
@@ -285,19 +267,116 @@ func getYoutubeVideoInfoFromApi(id, apiKey string) (YoutubeSearchResult, error) 
 		return YoutubeSearchResult{}, err
 	}
 
-	var response Response
-	err = json.Unmarshal(b, &response)
+	response, err := newYoutubeResponse(b)
 	if err != nil {
 		return YoutubeSearchResult{}, err
 	}
 
+	item := response.Items[0]
+	return YoutubeSearchResult{item.Snippet.Title, id,
+		item.Snippet.Thumbnails.Default.Url,
+		utils.FormatMinutesSeconds(
+			parseYoutubeApiTime(item.ContentDetails.Duration))}, nil
+}
+
+func getYoutubeCharts(apiKey string) ([]YoutubeSearchResult, error) {
+	categoriesUrl := "https://www.googleapis.com/youtube/v3/videoCategories?"
+	query := url.Values{}
+	query.Set("part", "snippet")
+	query.Set("regionCode", "US")
+	query.Set("key", apiKey)
+
+	response, err := getYoutubeApiResponseItems(categoriesUrl + query.Encode())
+	if err != nil {
+		return nil, err
+	}
+
+	var musicCategoryId string
+	for _, item := range response.Items {
+		if item.Snippet.Title == "Music" {
+			musicCategoryId = item.Id
+			break
+		}
+	}
+
+	if utils.StringIsEmpty(musicCategoryId) {
+		return nil, utils.Error("Couldn't retrieve category id!")
+	}
+
+	infoUrl := "https://www.googleapis.com/youtube/v3/videos?"
+	query = url.Values{}
+	query.Set("chart", "mostPopular")
+	query.Set("part", "snippet,contentDetails")
+	query.Set("maxResults", "15")
+	query.Set("regionCode", "US")
+	query.Set("key", apiKey)
+	query.Set("videoCategoryId", musicCategoryId)
+
+	response, err = getYoutubeApiResponseItems(infoUrl + query.Encode())
+	if err != nil {
+		return nil, err
+	}
+
+	var results []YoutubeSearchResult
+	for _, item := range response.Items {
+		result := YoutubeSearchResult{item.Snippet.Title, item.Id,
+			item.Snippet.Thumbnails.Default.Url,
+			utils.FormatMinutesSeconds(
+				parseYoutubeApiTime(item.ContentDetails.Duration))}
+		results = append(results, result)
+	}
+	return results, nil
+}
+
+func getYoutubeApiResponseItems(url string) (YoutubeResponse, error) {
+	res, err := http.Get(url)
+	if err != nil {
+		return YoutubeResponse{}, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return YoutubeResponse{}, utils.Error("Failure!")
+	}
+
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return YoutubeResponse{}, err
+	}
+
+	response, err := newYoutubeResponse(b)
+	return response, err
+}
+
+func (youtubeSearch *YoutubeSearch) getResults() []YoutubeSearchResult {
+	youtubeSearch.rwLock.RLock()
+	defer youtubeSearch.rwLock.RUnlock()
+	return youtubeSearch.results
+}
+
+func (youtubeSearch *YoutubeSearch) setLastTimeFetched() {
+	youtubeSearch.lastFetchedLock.Lock()
+	defer youtubeSearch.lastFetchedLock.Unlock()
+	youtubeSearch.lastFetched = time.Now()
+}
+
+func (youtubeSearch YoutubeSearch) GetUniqueId() string {
+	return youtubeSearch.query
+}
+
+func (youtubeSearch YoutubeSearch) GetTime() time.Time {
+	youtubeSearch.lastFetchedLock.RLock()
+	defer youtubeSearch.lastFetchedLock.RUnlock()
+	return youtubeSearch.lastFetched
+}
+
+func parseYoutubeApiTime(duration string) (int, int) {
 	hours := 0
 	minutes := 0
 	seconds := 0
 
 	var numbers []rune
-	item := response.Items[0]
-	for _, c := range item.ContentDetails.Duration {
+	for _, c := range duration {
 		if unicode.IsDigit(c) {
 			numbers = append(numbers, c)
 		}
@@ -321,43 +400,5 @@ func getYoutubeVideoInfoFromApi(id, apiKey string) (YoutubeSearchResult, error) 
 		}
 	}
 	minutes += hours * 60
-
-	return YoutubeSearchResult{item.Snippet.Title, id,
-		item.Snippet.Thumbnails.Default.Url,
-		utils.FormatMinutesSeconds(minutes, seconds)}, nil
-}
-
-func getYoutubeVideoInfoFromYtdl(id string) (YoutubeSearchResult, error) {
-	info, err := ytdl.GetVideoInfoFromID(id)
-	if err != nil {
-		return YoutubeSearchResult{}, err
-	}
-
-	seconds := int(info.Duration.Seconds()) % 60
-	minutes := int(info.Duration.Minutes())
-	return YoutubeSearchResult{info.Title, id,
-		info.GetThumbnailURL(ytdl.ThumbnailQualityDefault).String(),
-		utils.FormatMinutesSeconds(minutes, seconds)}, nil
-}
-
-func (youtubeSearch *YoutubeSearch) getResults() []YoutubeSearchResult {
-	youtubeSearch.rwLock.RLock()
-	defer youtubeSearch.rwLock.RUnlock()
-	return youtubeSearch.results
-}
-
-func (youtubeSearch *YoutubeSearch) setLastTimeFetched() {
-	youtubeSearch.lastFetchedLock.Lock()
-	defer youtubeSearch.lastFetchedLock.Unlock()
-	youtubeSearch.lastFetched = time.Now()
-}
-
-func (youtubeSearch YoutubeSearch) GetUniqueId() string {
-	return youtubeSearch.query
-}
-
-func (youtubeSearch YoutubeSearch) GetTime() time.Time {
-	youtubeSearch.lastFetchedLock.RLock()
-	defer youtubeSearch.lastFetchedLock.RUnlock()
-	return youtubeSearch.lastFetched
+	return minutes, seconds
 }

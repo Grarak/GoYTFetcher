@@ -23,4 +23,5 @@ const (
 	StatusYoutubeGetFailure          = 19
 	StatusYoutubeGetInfoFailure      = 20
 	StatusUserPasswordReset          = 21
+	StatusYoutubeGetChartsFailure    = 22
 )

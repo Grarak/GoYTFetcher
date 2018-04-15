@@ -83,6 +83,25 @@ func youtubeGetInfo(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
+func youtubeGetCharts(client *miniserver.Client) *miniserver.Response {
+	request, err := database.NewYoutube(client.Request)
+	if err != nil {
+		return client.CreateResponse(utils.StatusInvalid)
+	}
+
+	userDB := database.GetDatabase().UserDB
+	if requester, err := userDB.FindUserByApiKey(request.ApiKey);
+		err == nil && *requester.Verified {
+		info, err := database.GetDatabase().YoutubeDB.GetYoutubeCharts()
+		if err != nil {
+			client.CreateResponse(utils.StatusYoutubeGetChartsFailure)
+		}
+		return client.CreateJsonResponse(info)
+	}
+
+	return client.CreateResponse(utils.StatusInvalid)
+}
+
 func HandleYoutubeV1(path string, client *miniserver.Client) *miniserver.Response {
 	switch path {
 	case "fetch":
@@ -102,6 +121,11 @@ func HandleYoutubeV1(path string, client *miniserver.Client) *miniserver.Respons
 	case "getinfo":
 		if client.Method == http.MethodPost && client.IsContentJson() {
 			return youtubeGetInfo(client)
+		}
+		break
+	case "getcharts":
+		if client.Method == http.MethodPost && client.IsContentJson() {
+			return youtubeGetCharts(client)
 		}
 		break
 	}
