@@ -36,6 +36,9 @@ type YoutubeDB struct {
 	searchesRanking *rankingTree
 	searches        sync.Map
 
+	idRanking *rankingTree
+	ids       sync.Map
+
 	deleteCacheLock sync.RWMutex
 
 	charts            []YoutubeSearchResult
@@ -53,6 +56,7 @@ func newYoutubeDB() (*YoutubeDB, error) {
 		youtubeDL:       youtubeDL,
 		songsRanking:    new(rankingTree),
 		searchesRanking: new(rankingTree),
+		idRanking:       new(rankingTree),
 	}
 
 	files, err := ioutil.ReadDir(utils.YOUTUBE_DIR)
@@ -99,8 +103,10 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, error) {
 
 	youtubeSong := newYoutubeSong(videoInfo.ID)
 	loadedSong, loaded := youtubeDB.songs.LoadOrStore(youtubeSong.id, youtubeSong)
-	youtubeSong = loadedSong.(*YoutubeSong)
-	youtubeSong.setLastTimeFetched()
+	if loaded {
+		youtubeSong = loadedSong.(*YoutubeSong)
+		youtubeSong.setLastTimeFetched()
+	}
 
 	if loaded {
 		youtubeSong.downloadWait.Wait()
@@ -130,8 +136,9 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, error) {
 				youtubeDB.deleteCacheLock.Unlock()
 			}
 		}
+	} else {
+		youtubeDB.songs.Delete(youtubeSong)
 	}
-
 	return youtubeSong.getEncryptedId(youtubeDB.randomKey), nil
 }
 
@@ -142,8 +149,10 @@ func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearc
 
 	youtubeSearch := newYoutubeSearch(searchQuery)
 	loadedSearch, loaded := youtubeDB.searches.LoadOrStore(youtubeSearch.query, youtubeSearch)
-	youtubeSearch = loadedSearch.(*YoutubeSearch)
-	youtubeSearch.setLastTimeFetched()
+	if loaded {
+		youtubeSearch = loadedSearch.(*YoutubeSearch)
+		youtubeSearch.setLastTimeFetched()
+	}
 
 	var results []YoutubeSearchResult
 	var err error
@@ -161,13 +170,44 @@ func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearc
 			youtubeDB.songsRanking.delete(lowestSearch)
 			youtubeDB.songs.Delete(lowestSearch.GetUniqueId())
 		}
+	} else {
+		youtubeDB.searches.Delete(youtubeSearch)
 	}
-
 	return results, err
 }
 
 func (youtubeDB *YoutubeDB) GetYoutubeInfo(id string) (YoutubeSearchResult, error) {
-	return getYoutubeVideoInfo(id, youtubeDB.ytKey)
+	if utils.StringIsEmpty(id) {
+		return YoutubeSearchResult{}, utils.Error("Id is empty!")
+	}
+
+	youtubeId := newYoutubeId(id)
+	loadedId, loaded := youtubeDB.ids.LoadOrStore(youtubeId.id, youtubeId)
+	if loaded {
+		youtubeId = loadedId.(*YoutubeId)
+		youtubeId.setLastTimeFetched()
+	}
+
+	var result YoutubeSearchResult
+	var err error
+	if loaded {
+		result = youtubeId.getResult()
+	} else {
+		result, err = youtubeId.fetchId(youtubeDB)
+	}
+
+	if err == nil {
+		youtubeDB.idRanking.delete(*youtubeId)
+		youtubeDB.idRanking.insert(*youtubeId)
+		if youtubeDB.idRanking.getSize() >= 1000 {
+			lowestId := youtubeDB.idRanking.getLowest()
+			youtubeDB.idRanking.delete(lowestId)
+			youtubeDB.ids.Delete(lowestId.GetUniqueId())
+		}
+	} else {
+		youtubeDB.ids.Delete(youtubeId)
+	}
+	return result, err
 }
 
 func (youtubeDB *YoutubeDB) GetYoutubeCharts() ([]YoutubeSearchResult, error) {
@@ -188,135 +228,4 @@ func (youtubeDB *YoutubeDB) GetYoutubeCharts() ([]YoutubeSearchResult, error) {
 
 	defer youtubeDB.chartsLock.RUnlock()
 	return youtubeDB.charts, nil
-}
-
-type rankingInterface interface {
-	GetUniqueId() string
-	GetTime() time.Time
-}
-
-type rankingTree struct {
-	start *node
-	size  int
-
-	lock sync.RWMutex
-}
-
-func (tree *rankingTree) insert(rankingItem rankingInterface) {
-	tree.lock.Lock()
-	defer tree.lock.Unlock()
-
-	tree.size++
-	if tree.start == nil {
-		tree.start = &node{rankingItem: rankingItem}
-		return
-	}
-	tree.start.insert(rankingItem)
-}
-
-func (tree *rankingTree) delete(rankingItem rankingInterface) bool {
-	tree.lock.Lock()
-	defer tree.lock.Unlock()
-
-	if tree.start == nil {
-		return false
-	}
-	if tree.start.rankingItem.GetUniqueId() == rankingItem.GetUniqueId() {
-		tree.size--
-		tree.start = createReplaceNode(tree.start)
-		return true
-	}
-	if tree.start.delete(rankingItem) {
-		tree.size--
-		return true
-	}
-	return false
-}
-
-func (tree *rankingTree) getLowest() rankingInterface {
-	tree.lock.RLock()
-	defer tree.lock.RUnlock()
-
-	if tree.start == nil {
-		return nil
-	}
-	return tree.start.getLowest()
-}
-
-func (tree *rankingTree) getSize() int {
-	tree.lock.RLock()
-	defer tree.lock.RUnlock()
-
-	return tree.size
-}
-
-type node struct {
-	rankingItem rankingInterface
-	left, right *node
-}
-
-func (nodeLeaf *node) insert(rankingItem rankingInterface) {
-	if rankingItem.GetTime().Before(nodeLeaf.rankingItem.GetTime()) {
-		if nodeLeaf.left == nil {
-			nodeLeaf.left = &node{rankingItem: rankingItem}
-		} else {
-			nodeLeaf.left.insert(rankingItem)
-		}
-	} else {
-		if nodeLeaf.right == nil {
-			nodeLeaf.right = &node{rankingItem: rankingItem}
-		} else {
-			nodeLeaf.right.insert(rankingItem)
-		}
-	}
-}
-
-func (nodeLeaf *node) delete(rankingItem rankingInterface) bool {
-	if nodeLeaf.left != nil &&
-		nodeLeaf.left.rankingItem.GetUniqueId() == rankingItem.GetUniqueId() {
-		nodeLeaf.left = createReplaceNode(nodeLeaf.left)
-		return true
-	} else if nodeLeaf.right != nil &&
-		nodeLeaf.right.rankingItem.GetUniqueId() == rankingItem.GetUniqueId() {
-		nodeLeaf.right = createReplaceNode(nodeLeaf.right)
-		return true
-	}
-
-	if rankingItem.GetTime().Before(nodeLeaf.rankingItem.GetTime()) {
-		if nodeLeaf.left != nil {
-			return nodeLeaf.left.delete(rankingItem)
-		}
-	} else if nodeLeaf.right != nil {
-		return nodeLeaf.right.delete(rankingItem)
-	}
-
-	return false
-}
-
-func (nodeLeaf *node) getLowest() rankingInterface {
-	if nodeLeaf.left == nil {
-		return nodeLeaf.rankingItem
-	}
-	return nodeLeaf.left.getLowest()
-}
-
-func createReplaceNode(replacedNode *node) *node {
-	newNode := replacedNode.right
-	if newNode == nil {
-		return replacedNode.left
-	}
-	if replacedNode.left == nil {
-		return newNode
-	}
-
-	if newNode.left == nil {
-		newNode.left = replacedNode.left
-		return newNode
-	}
-	lastLeftNode := newNode.left
-	for lastLeftNode.left != nil {
-		lastLeftNode = lastLeftNode.left
-	}
-	lastLeftNode.left = replacedNode.left
-	return newNode
 }

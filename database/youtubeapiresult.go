@@ -1,6 +1,12 @@
 package database
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"net/http"
+	"io/ioutil"
+
+	"../utils"
+)
 
 type YoutubeThumbnail struct {
 	Url string `json:"url"`
@@ -32,5 +38,25 @@ type YoutubeResponse struct {
 func newYoutubeResponse(data []byte) (YoutubeResponse, error) {
 	var response YoutubeResponse
 	err := json.Unmarshal(data, &response)
+	return response, err
+}
+
+func getYoutubeApiResponseItems(url string) (YoutubeResponse, error) {
+	res, err := http.Get(url)
+	if err != nil {
+		return YoutubeResponse{}, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return YoutubeResponse{}, utils.Error("Failure!")
+	}
+
+	b, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return YoutubeResponse{}, err
+	}
+
+	response, err := newYoutubeResponse(b)
 	return response, err
 }

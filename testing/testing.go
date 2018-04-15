@@ -17,8 +17,6 @@ var port int
 func main() {
 	flag.IntVar(&port, "p", 6713, "Which port to use")
 	flag.Parse()
-
-	createUsers()
 }
 
 func createUsers() {
@@ -165,6 +163,34 @@ func searchYoutube(apiKey, searchQuery string) error {
 	}
 
 	fmt.Println("search youtube: " + string(b))
+	return nil
+}
+
+func getChartsYoutube(apiKey string) error {
+	youtubeSearch := YoutubeSearch{
+		Apikey: apiKey,
+	}
+
+	b, err := json.Marshal(youtubeSearch)
+	if err != nil {
+		return err
+	}
+
+	res, err := http.Post(
+		getUrl("v1", "youtube/getcharts"),
+		"application/json",
+		bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+
+	b, err = ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("charts youtube: " + string(b))
 	return nil
 }
 

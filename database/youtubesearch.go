@@ -14,7 +14,6 @@ import (
 	"../utils"
 	"net/url"
 	"github.com/rylio/ytdl"
-	"io/ioutil"
 	"unicode"
 	"strconv"
 )
@@ -67,18 +66,21 @@ func (youtubeSearch *YoutubeSearch) search(youtubeDB *YoutubeDB) ([]YoutubeSearc
 	youtubeSearch.rwLock.Lock()
 	defer youtubeSearch.rwLock.Unlock()
 
-	results, err := youtubeSearch.getSearchFromWebsite(youtubeDB.ytKey)
+	results, err := youtubeSearch.getSearchFromWebsite(youtubeDB)
 	if err != nil && !utils.StringIsEmpty(youtubeDB.ytKey) {
-		results, err = youtubeSearch.getSearchFromApi(youtubeDB.ytKey)
+		results, err = youtubeSearch.getSearchFromApi(youtubeDB)
 	}
 	if err != nil {
-		results, err = youtubeSearch.getSearchFromApi(youtubeDB.ytKey)
+		results, err = youtubeSearch.getSearchFromApi(youtubeDB)
+	}
+	if err != nil {
+		return nil, err
 	}
 	youtubeSearch.results = results
 	return results, err
 }
 
-func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(apiKey string) ([]YoutubeSearchResult, error) {
+func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(youtubeDB *YoutubeDB) ([]YoutubeSearchResult, error) {
 	searchUrl := "https://www.youtube.com/results?"
 	query := url.Values{}
 	query.Set("search_query", youtubeSearch.query)
@@ -94,7 +96,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(apiKey string) ([]Youtu
 
 	var results []YoutubeSearchResult
 	for _, id := range ids {
-		result, err := getYoutubeVideoInfo(id, apiKey)
+		result, err := youtubeDB.GetYoutubeInfo(id)
 		if err == nil {
 			results = append(results, result)
 		}
@@ -102,14 +104,14 @@ func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(apiKey string) ([]Youtu
 	return results, nil
 }
 
-func (youtubeSearch *YoutubeSearch) getSearchFromApi(apiKey string) ([]YoutubeSearchResult, error) {
+func (youtubeSearch *YoutubeSearch) getSearchFromApi(youtubeDB *YoutubeDB) ([]YoutubeSearchResult, error) {
 	searchUrl := "https://www.googleapis.com/youtube/v3/search?"
 	query := url.Values{}
 	query.Set("q", youtubeSearch.query)
 	query.Set("type", "video")
 	query.Set("maxResults", "5")
 	query.Set("part", "snippet")
-	query.Set("key", apiKey)
+	query.Set("key", youtubeDB.ytKey)
 
 	matcher, err := regexp.Compile("\"videoId\":\\s+\"([a-z_A-Z0-9\\-]{11})\"")
 	if err != nil {
@@ -122,7 +124,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromApi(apiKey string) ([]YoutubeSe
 
 	var results []YoutubeSearchResult
 	for _, id := range ids {
-		result, err := getYoutubeVideoInfo(id, apiKey)
+		result, err := youtubeDB.GetYoutubeInfo(id)
 		if err == nil {
 			results = append(results, result)
 		}
@@ -224,14 +226,6 @@ func parseYoutubeSearchFromURL(searchUrl string, matcher *regexp.Regexp) ([]stri
 	return ids, nil
 }
 
-func getYoutubeVideoInfo(id, apiKey string) (YoutubeSearchResult, error) {
-	result, err := getYoutubeVideoInfoFromYtdl(id)
-	if err != nil && !utils.StringIsEmpty(apiKey) {
-		result, err = getYoutubeVideoInfoFromApi(id, apiKey)
-	}
-	return result, err
-}
-
 func getYoutubeVideoInfoFromYtdl(id string) (YoutubeSearchResult, error) {
 	info, err := ytdl.GetVideoInfoFromID(id)
 	if err != nil {
@@ -252,22 +246,7 @@ func getYoutubeVideoInfoFromApi(id, apiKey string) (YoutubeSearchResult, error) 
 	query.Set("part", "snippet,contentDetails")
 	query.Set("key", apiKey)
 
-	res, err := http.Get(infoUrl + query.Encode())
-	if err != nil {
-		return YoutubeSearchResult{}, err
-	}
-
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return YoutubeSearchResult{}, utils.Error("Failure!")
-	}
-
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return YoutubeSearchResult{}, err
-	}
-
-	response, err := newYoutubeResponse(b)
+	response, err := getYoutubeApiResponseItems(infoUrl + query.Encode())
 	if err != nil {
 		return YoutubeSearchResult{}, err
 	}
@@ -326,26 +305,6 @@ func getYoutubeCharts(apiKey string) ([]YoutubeSearchResult, error) {
 		results = append(results, result)
 	}
 	return results, nil
-}
-
-func getYoutubeApiResponseItems(url string) (YoutubeResponse, error) {
-	res, err := http.Get(url)
-	if err != nil {
-		return YoutubeResponse{}, err
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return YoutubeResponse{}, utils.Error("Failure!")
-	}
-
-	b, err := ioutil.ReadAll(res.Body)
-	if err != nil {
-		return YoutubeResponse{}, err
-	}
-
-	response, err := newYoutubeResponse(b)
-	return response, err
 }
 
 func (youtubeSearch *YoutubeSearch) getResults() []YoutubeSearchResult {
