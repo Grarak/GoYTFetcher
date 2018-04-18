@@ -71,7 +71,7 @@ func (youtubeSearch *YoutubeSearch) search(youtubeDB *YoutubeDB) ([]YoutubeSearc
 		results, err = youtubeSearch.getSearchFromApi(youtubeDB)
 	}
 	if err != nil {
-		results, err = youtubeSearch.getSearchFromApi(youtubeDB)
+		results, err = youtubeSearch.getSearchFromYoutubeDL(youtubeDB.youtubeDL)
 	}
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(youtubeDB *YoutubeDB) (
 		return nil, err
 	}
 
-	var results []YoutubeSearchResult
+	results := make([]YoutubeSearchResult, 0)
 	for _, id := range ids {
 		result, err := youtubeDB.GetYoutubeInfo(id)
 		if err == nil {
@@ -109,7 +109,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromApi(youtubeDB *YoutubeDB) ([]Yo
 	query := url.Values{}
 	query.Set("q", youtubeSearch.query)
 	query.Set("type", "video")
-	query.Set("maxResults", "5")
+	query.Set("maxResults", "10")
 	query.Set("part", "snippet")
 	query.Set("key", youtubeDB.ytKey)
 
@@ -122,7 +122,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromApi(youtubeDB *YoutubeDB) ([]Yo
 		return nil, err
 	}
 
-	var results []YoutubeSearchResult
+	results := make([]YoutubeSearchResult, 0)
 	for _, id := range ids {
 		result, err := youtubeDB.GetYoutubeInfo(id)
 		if err == nil {
@@ -146,7 +146,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromYoutubeDL(youtubeDL string) ([]
 		return nil, err
 	}
 
-	var results []YoutubeSearchResult
+	results := make([]YoutubeSearchResult, 0)
 	var result YoutubeSearchResult
 	bufReader := bufio.NewReader(reader)
 	for i := 0; ; i++ {
@@ -202,7 +202,7 @@ func parseYoutubeSearchFromURL(searchUrl string, matcher *regexp.Regexp) ([]stri
 		return nil, utils.Error("Failure!")
 	}
 
-	var ids [] string
+	ids := make([]string, 0)
 	reader := bufio.NewReader(res.Body)
 	for {
 		line, err := reader.ReadString('\n')
@@ -214,7 +214,7 @@ func parseYoutubeSearchFromURL(searchUrl string, matcher *regexp.Regexp) ([]stri
 			id := matches[0][1]
 			if !utils.StringArrayContains(ids, id) {
 				ids = append(ids, id)
-				if len(ids) >= 5 {
+				if len(ids) >= 10 {
 					break
 				}
 			}
@@ -286,7 +286,7 @@ func getYoutubeCharts(apiKey string) ([]YoutubeSearchResult, error) {
 	query = url.Values{}
 	query.Set("chart", "mostPopular")
 	query.Set("part", "snippet,contentDetails")
-	query.Set("maxResults", "15")
+	query.Set("maxResults", "30")
 	query.Set("regionCode", "US")
 	query.Set("key", apiKey)
 	query.Set("videoCategoryId", musicCategoryId)

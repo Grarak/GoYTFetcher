@@ -13,7 +13,7 @@ import (
 const TablePlaylistNames = "playlistnames"
 
 type PlaylistName struct {
-	ApiKey string `json:"apikey"`
+	ApiKey string `json:"apikey,omitempty"`
 	Name   string `json:"name"`
 	Public bool   `json:"public"`
 }
@@ -43,13 +43,13 @@ func newPlaylistNamesDB(db *sql.DB, rwLock *sync.RWMutex) (*PlaylistNamesDB, err
 	return &PlaylistNamesDB{db, rwLock}, nil
 }
 
-func (playlistNamesDB *PlaylistNamesDB) ListPlaylistNames(apiKey string, publicOnly bool) ([]string, error) {
+func (playlistNamesDB *PlaylistNamesDB) ListPlaylistNames(apiKey string, publicOnly bool) ([]PlaylistName, error) {
 	playlistNamesDB.rwLock.RLock()
 	defer playlistNamesDB.rwLock.RUnlock()
 
 	cmd := fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = '%s'",
-		ColumnName.name, TablePlaylistNames, ColumnApikey.name, apiKey)
+		"SELECT %s,%s FROM %s WHERE %s = '%s'",
+		ColumnName.name, ColumnPublic.name, TablePlaylistNames, ColumnApikey.name, apiKey)
 
 	if publicOnly {
 		cmd += fmt.Sprintf(" AND %s = 1", ColumnPublic.name)
@@ -61,14 +61,15 @@ func (playlistNamesDB *PlaylistNamesDB) ListPlaylistNames(apiKey string, publicO
 	}
 	defer row.Close()
 
-	var list []string
+	list := make([]PlaylistName, 0)
 	for row.Next() {
 		var name string
-		err := row.Scan(&name)
+		var public bool
+		err := row.Scan(&name, &public)
 		if err != nil {
 			return nil, err
 		}
-		list = append(list, name)
+		list = append(list, PlaylistName{Name: name, Public: public})
 	}
 
 	return list, nil
@@ -89,7 +90,6 @@ func (playlistNamesDB *PlaylistNamesDB) CreatePlaylistName(playlistName Playlist
 
 	var exists bool
 	row.Scan(&exists)
-	fmt.Println(exists)
 	if exists {
 		return utils.Error(playlistName.Name + " already exists")
 	}

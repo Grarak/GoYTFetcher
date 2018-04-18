@@ -58,7 +58,7 @@ func (playlistsDB *PlaylistsDB) ListPlaylistLinks(playlistName PlaylistName) ([]
 	}
 	defer row.Close()
 
-	var links []string
+	links := make([]string, 0)
 	for row.Next() {
 		var link string
 		err := row.Scan(&link)

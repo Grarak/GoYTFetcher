@@ -217,11 +217,11 @@ func (youtubeDB *YoutubeDB) GetYoutubeCharts() ([]YoutubeSearchResult, error) {
 		youtubeDB.chartsLock.Lock()
 		defer youtubeDB.chartsLock.Unlock()
 
-		youtubeDB.chartsLastFetched = time.Now()
 		charts, err := getYoutubeCharts(youtubeDB.ytKey)
 		if err != nil {
 			return nil, err
 		}
+		youtubeDB.chartsLastFetched = time.Now()
 		youtubeDB.charts = charts
 		return charts, nil
 	}

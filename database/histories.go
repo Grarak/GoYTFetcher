@@ -90,7 +90,7 @@ func (historiesDB *HistoriesDB) GetHistory(apiKey string, page int) ([]string, e
 	}
 	defer row.Close()
 
-	var links []string
+	links := make([]string, 0)
 	for row.Next() {
 		var link string
 		err = row.Scan(&link)
