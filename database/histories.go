@@ -45,31 +45,12 @@ func (historiesDB *HistoriesDB) AddHistory(apiKey, id string) error {
 	historiesDB.rwLock.Lock()
 	defer historiesDB.rwLock.Unlock()
 
-	row := historiesDB.db.QueryRow(fmt.Sprintf(
-		"SELECT 1 FROM %s WHERE %s = '%s' AND %s = '%s'",
-		TableHistories,
-		ColumnApikey.name, apiKey,
-		ColumnId.name, id))
-
-	var exists bool
-	row.Scan(&exists)
-
-	if exists {
-		_, err := historiesDB.db.Exec(fmt.Sprintf(
-			"UPDATE %s SET %s = '%s' WHERE %s = '%s' AND %s = '%s'",
-			TableHistories,
-			ColumnDate.name, time.Now().Format(dateTimeFormat),
-			ColumnApikey.name, apiKey,
-			ColumnId.name, id))
-		return err
-	} else {
-		_, err := historiesDB.db.Exec(fmt.Sprintf(
-			"INSERT INTO %s (%s, %s, %s,) VALUES (?, ?, ?)",
-			TableHistories, ColumnApikey.name, ColumnId.name,
-			ColumnDate.name),
-			apiKey, id, time.Now().Format(dateTimeFormat))
-		return err
-	}
+	_, err := historiesDB.db.Exec(fmt.Sprintf(
+		"INSERT OR REPLACE INTO %s (%s, %s, %s) VALUES (?, ?, ?)",
+		TableHistories, ColumnApikey.name, ColumnId.name,
+		ColumnDate.name),
+		apiKey, id, time.Now().Format(dateTimeFormat))
+	return err
 }
 
 func (historiesDB *HistoriesDB) GetHistory(apiKey string, page int) ([]string, error) {
