@@ -280,12 +280,8 @@ func historyList(client *miniserver.Client) *miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	page, err := strconv.Atoi(client.Queries.Get("page"))
-	if err != nil {
-		page = 1
-	}
 	historiesDB := database.GetDatabase().HistoriesDB
-	histories, err := historiesDB.GetHistory(request.ApiKey, page)
+	histories, err := historiesDB.GetHistory(request.ApiKey)
 	if err == nil {
 		return client.CreateJsonResponse(histories)
 	}

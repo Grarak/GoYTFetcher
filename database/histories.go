@@ -45,7 +45,20 @@ func (historiesDB *HistoriesDB) AddHistory(apiKey, id string) error {
 	historiesDB.rwLock.Lock()
 	defer historiesDB.rwLock.Unlock()
 
-	_, err := historiesDB.db.Exec(fmt.Sprintf(
+	history, err := historiesDB.getHistory(apiKey)
+	if err != nil {
+		return err
+	}
+	for i := 50; i < len(history); i++ {
+		_, err := historiesDB.db.Exec(fmt.Sprintf(
+			"DELETE FROM %s WHERE %s = '%s' AND %s = '%s'",
+			TableHistories, ColumnApikey.name, apiKey, ColumnId.name, history[i]))
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = historiesDB.db.Exec(fmt.Sprintf(
 		"INSERT OR REPLACE INTO %s (%s, %s, %s) VALUES (?, ?, ?)",
 		TableHistories, ColumnApikey.name, ColumnId.name,
 		ColumnDate.name),
@@ -53,19 +66,18 @@ func (historiesDB *HistoriesDB) AddHistory(apiKey, id string) error {
 	return err
 }
 
-func (historiesDB *HistoriesDB) GetHistory(apiKey string, page int) ([]string, error) {
+func (historiesDB *HistoriesDB) GetHistory(apiKey string) ([]string, error) {
 	historiesDB.rwLock.RLock()
 	defer historiesDB.rwLock.RUnlock()
+	return historiesDB.getHistory(apiKey)
+}
 
-	if page < 1 {
-		page = 1
-	}
+func (historiesDB *HistoriesDB) getHistory(apiKey string) ([]string, error) {
 	row, err := historiesDB.db.Query(fmt.Sprintf(
 		"SELECT %s FROM %s WHERE %s = '%s' "+
-			"ORDER BY %s DESC "+
-			"LIMIT 50 OFFSET %d",
+			"ORDER BY %s DESC",
 		ColumnId.name, TableHistories, ColumnApikey.name, apiKey,
-		ColumnDate.name, 50*(page-1)))
+		ColumnDate.name))
 	if err != nil {
 		return nil, err
 	}
@@ -80,6 +92,5 @@ func (historiesDB *HistoriesDB) GetHistory(apiKey string, page int) ([]string, e
 		}
 		links = append(links, link)
 	}
-
 	return links, nil
 }

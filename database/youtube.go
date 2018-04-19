@@ -18,6 +18,7 @@ type Youtube struct {
 	ApiKey      string `json:"apikey"`
 	SearchQuery string `json:"searchquery"`
 	Id          string `json:"id"`
+	AddHistory  bool   `json:"addhistory"`
 }
 
 func NewYoutube(data []byte) (Youtube, error) {
@@ -102,6 +103,10 @@ func (youtubeDB *YoutubeDB) GetYoutubeSong(id string) ([]byte, error) {
 func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, error) {
 	info, err := youtubeDB.GetYoutubeInfo(id)
 	if err != nil {
+		return "", nil
+	}
+	index := strings.Index(info.Duration, ":")
+	if index < 0 {
 		return "", nil
 	}
 	minutes, err := strconv.Atoi(info.Duration[:strings.Index(info.Duration, ":")])

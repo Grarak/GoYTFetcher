@@ -89,7 +89,10 @@ func (ytdl Ytdl) getVideoInfoFromHTML(id string, html []byte) (*VideoInfo, error
 		}
 	}
 
-	inf := jsonConfig["args"].(map[string]interface{})
+	inf, ok := jsonConfig["args"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("error no args in json %s", id)
+	}
 	if status, ok := inf["status"].(string); ok && status == "fail" {
 		return nil, fmt.Errorf("error %d:%s", inf["errorcode"], inf["reason"])
 	}
