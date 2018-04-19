@@ -6,8 +6,8 @@ import (
 	"../../utils"
 	"net/http"
 	"strings"
-	"net/url"
 	"../../logger"
+	"net/url"
 )
 
 func youtubeFetch(client *miniserver.Client) *miniserver.Response {
@@ -36,7 +36,12 @@ func youtubeFetch(client *miniserver.Client) *miniserver.Response {
 		if !strings.HasPrefix(urlLink, "http") {
 			query := url.Values{}
 			query.Set("id", urlLink)
-			urlLink = "http://" + youtubeDB.Host + "/api/v1/youtube/get?" + query.Encode()
+
+			host := youtubeDB.Host
+			if !strings.HasPrefix(host, "http") {
+				host = "http://" + host
+			}
+			urlLink = host + "/api/v1/youtube/get?" + query.Encode()
 		}
 		return client.ResponseBody(urlLink)
 	}
