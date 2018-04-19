@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"io/ioutil"
 
-	"../utils"
+	"fmt"
 )
 
 type YoutubeThumbnail struct {
@@ -49,7 +49,7 @@ func getYoutubeApiResponseItems(url string) (YoutubeResponse, error) {
 	defer res.Body.Close()
 
 	if res.StatusCode != http.StatusOK {
-		return YoutubeResponse{}, utils.Error("Failure!")
+		return YoutubeResponse{}, fmt.Errorf("failure")
 	}
 
 	b, err := ioutil.ReadAll(res.Body)

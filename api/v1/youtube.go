@@ -5,6 +5,8 @@ import (
 	"../../database"
 	"../../utils"
 	"net/http"
+	"strings"
+	"net/url"
 )
 
 func youtubeFetch(client *miniserver.Client) *miniserver.Response {
@@ -17,13 +19,19 @@ func youtubeFetch(client *miniserver.Client) *miniserver.Response {
 	if requester, err := userDB.FindUserByApiKey(request.ApiKey);
 		err == nil && *requester.Verified {
 
-		id, err := database.GetDatabase().YoutubeDB.FetchYoutubeSong(request.Id)
+		youtubeDB := database.GetDatabase().YoutubeDB
+		urlLink, err := youtubeDB.FetchYoutubeSong(request.Id)
 		if err != nil {
 			return client.CreateResponse(utils.StatusYoutubeFetchFailure)
 		}
 
 		database.GetDatabase().HistoriesDB.AddHistory(request.ApiKey, request.Id)
-		return client.ResponseBody(id)
+		if !strings.HasPrefix(urlLink, "http") {
+			query := url.Values{}
+			query.Set("id", urlLink)
+			urlLink = "http://" + youtubeDB.Host + "/api/v1/youtube/get?" + query.Encode()
+		}
+		return client.ResponseBody(urlLink)
 	}
 
 	return client.CreateResponse(utils.StatusInvalid)

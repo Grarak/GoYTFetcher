@@ -28,9 +28,9 @@ func (youtubeId *YoutubeId) fetchId(youtubeDB *YoutubeDB) (YoutubeSearchResult, 
 	youtubeId.rwLock.Lock()
 	defer youtubeId.rwLock.Unlock()
 
-	result, err := getYoutubeVideoInfoFromYtdl(youtubeId.id)
+	result, err := youtubeDB.getYoutubeVideoInfoFromYtdl(youtubeId.id)
 	if err != nil && !utils.StringIsEmpty(youtubeDB.ytKey) {
-		result, err = getYoutubeVideoInfoFromApi(youtubeId.id, youtubeDB.ytKey)
+		result, err = youtubeDB.getYoutubeVideoInfoFromApi(youtubeId.id)
 	}
 	if err != nil {
 		return YoutubeSearchResult{}, err

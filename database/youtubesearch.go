@@ -13,7 +13,7 @@ import (
 
 	"../utils"
 	"net/url"
-	"github.com/rylio/ytdl"
+	"../ytdl"
 	"unicode"
 	"strconv"
 )
@@ -186,7 +186,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromYoutubeDL(youtubeDL string) ([]
 	reader.Close()
 
 	if len(results) == 0 {
-		return nil, utils.Error("No videos found!")
+		return nil, fmt.Errorf("no videos found")
 	}
 	return results, nil
 }
@@ -199,7 +199,7 @@ func parseYoutubeSearchFromURL(searchUrl string, matcher *regexp.Regexp) ([]stri
 
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return nil, utils.Error("Failure!")
+		return nil, fmt.Errorf("failure")
 	}
 
 	ids := make([]string, 0)
@@ -221,13 +221,13 @@ func parseYoutubeSearchFromURL(searchUrl string, matcher *regexp.Regexp) ([]stri
 		}
 	}
 	if len(ids) == 0 {
-		return nil, utils.Error("No ids found!")
+		return nil, fmt.Errorf("no ids found")
 	}
 	return ids, nil
 }
 
-func getYoutubeVideoInfoFromYtdl(id string) (YoutubeSearchResult, error) {
-	info, err := ytdl.GetVideoInfoFromID(id)
+func (youtubeDB *YoutubeDB) getYoutubeVideoInfoFromYtdl(id string) (YoutubeSearchResult, error) {
+	info, err := youtubeDB.ytdl.GetVideoInfoFromID(id)
 	if err != nil {
 		return YoutubeSearchResult{}, err
 	}
@@ -239,12 +239,12 @@ func getYoutubeVideoInfoFromYtdl(id string) (YoutubeSearchResult, error) {
 		utils.FormatMinutesSeconds(minutes, seconds)}, nil
 }
 
-func getYoutubeVideoInfoFromApi(id, apiKey string) (YoutubeSearchResult, error) {
+func (youtubeDB *YoutubeDB) getYoutubeVideoInfoFromApi(id string) (YoutubeSearchResult, error) {
 	infoUrl := "https://www.googleapis.com/youtube/v3/videos?"
 	query := url.Values{}
 	query.Set("id", id)
 	query.Set("part", "snippet,contentDetails")
-	query.Set("key", apiKey)
+	query.Set("key", youtubeDB.ytKey)
 
 	response, err := getYoutubeApiResponseItems(infoUrl + query.Encode())
 	if err != nil {
@@ -279,7 +279,7 @@ func getYoutubeCharts(apiKey string) ([]YoutubeSearchResult, error) {
 	}
 
 	if utils.StringIsEmpty(musicCategoryId) {
-		return nil, utils.Error("Couldn't retrieve category id!")
+		return nil, fmt.Errorf("couldn't retrieve category id")
 	}
 
 	infoUrl := "https://www.googleapis.com/youtube/v3/videos?"

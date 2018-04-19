@@ -4,6 +4,8 @@ import (
 	"os"
 	"strconv"
 	"fmt"
+	"net"
+	"log"
 )
 
 func Panic(err error) {
@@ -14,12 +16,6 @@ func Panic(err error) {
 
 func MkDir(dir string) error {
 	return os.MkdirAll(dir, os.ModePerm)
-}
-
-type Error string
-
-func (err Error) Error() string {
-	return string(err)
 }
 
 func StringIsEmpty(data string) bool {
@@ -45,4 +41,25 @@ func FormatMinutesSeconds(minutes, seconds int) string {
 		s = "0" + s
 	}
 	return fmt.Sprintf("%s:%s", m, s)
+}
+
+func ReverseStringSlice(s []string) {
+	for i, j := 0, len(s)-1; i < len(s)/2; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+
+func InterfaceToString(val interface{}) string {
+	return fmt.Sprintf("%v", val)
+}
+
+func GetOutboundIP() net.IP {
+	conn, err := net.Dial("udp", "8.8.8.8:80")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer conn.Close()
+
+	localAddr := conn.LocalAddr().(*net.UDPAddr)
+	return localAddr.IP
 }

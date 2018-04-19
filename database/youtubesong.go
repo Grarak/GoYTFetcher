@@ -4,7 +4,7 @@ import (
 	"time"
 	"sync"
 	"io/ioutil"
-	"github.com/rylio/ytdl"
+	"../ytdl"
 	"os"
 
 	"../utils"
@@ -14,14 +14,22 @@ import (
 type YoutubeSong struct {
 	id string
 
+	googleUrl     string
+	googleUrlLock sync.RWMutex
+
 	lastFetched     time.Time
 	lastFetchedLock *sync.RWMutex
 
 	encryptedId     string
 	encryptedIdLock sync.Mutex
 
-	downloadWait sync.WaitGroup
-	rwLock       sync.RWMutex
+	downloaded     bool
+	downloadedLock sync.RWMutex
+
+	downloading     bool
+	downloadingLock sync.RWMutex
+
+	rwLock sync.RWMutex
 }
 
 func newYoutubeSong(id string) *YoutubeSong {
@@ -32,15 +40,54 @@ func newYoutubeSong(id string) *YoutubeSong {
 	}
 }
 
+func (youtubeSong *YoutubeSong) isDownloaded() bool {
+	youtubeSong.downloadedLock.RLock()
+	defer youtubeSong.downloadedLock.RUnlock()
+	return youtubeSong.downloaded
+}
+
+func (youtubeSong *YoutubeSong) setDownloaded(downloaded bool) {
+	youtubeSong.downloadedLock.Lock()
+	defer youtubeSong.downloadedLock.Unlock()
+	youtubeSong.downloaded = downloaded
+}
+
+func (youtubeSong *YoutubeSong) isDownloading() bool {
+	youtubeSong.downloadingLock.RLock()
+	defer youtubeSong.downloadingLock.RUnlock()
+	return youtubeSong.downloading
+}
+
+func (youtubeSong *YoutubeSong) setDownloading(downloading bool) {
+	youtubeSong.downloadingLock.Lock()
+	defer youtubeSong.downloadingLock.Unlock()
+	youtubeSong.downloading = downloading
+}
+
 func (youtubeSong *YoutubeSong) read() ([]byte, error) {
 	youtubeSong.rwLock.RLock()
 	defer youtubeSong.rwLock.RUnlock()
 	return ioutil.ReadFile(youtubeSong.getFilePath())
 }
 
-func (youtubeSong *YoutubeSong) download(info *ytdl.VideoInfo) error {
+func (youtubeSong *YoutubeSong) getGoogleUrl() string {
+	youtubeSong.googleUrlLock.RLock()
+	defer youtubeSong.googleUrlLock.RUnlock()
+	return youtubeSong.googleUrl
+}
+
+func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
+	youtubeSong.setDownloading(true)
+	defer youtubeSong.setDownloading(false)
+	defer youtubeSong.setDownloaded(true)
 	youtubeSong.rwLock.Lock()
 	defer youtubeSong.rwLock.Unlock()
+
+	info, err := youtubeDB.ytdl.GetVideoInfoFromID(youtubeSong.id)
+	if err != nil {
+		defer youtubeSong.googleUrlLock.Unlock()
+		return err
+	}
 
 	formats := info.Formats.Worst(ytdl.FormatAudioEncodingKey)
 	var downloadFormat ytdl.Format
@@ -50,6 +97,14 @@ func (youtubeSong *YoutubeSong) download(info *ytdl.VideoInfo) error {
 			break
 		}
 	}
+
+	url, err := info.GetDownloadURL(downloadFormat)
+	if err != nil {
+		defer youtubeSong.googleUrlLock.Unlock()
+		return err
+	}
+	youtubeSong.googleUrl = url.String()
+	youtubeSong.googleUrlLock.Unlock()
 
 	file, err := os.Create(youtubeSong.getFilePath())
 	if err != nil {

@@ -80,7 +80,7 @@ func (playlistNamesDB *PlaylistNamesDB) CreatePlaylistName(playlistName Playlist
 	defer playlistNamesDB.rwLock.Unlock()
 
 	if utils.StringIsEmpty(playlistName.Name) {
-		return utils.Error("Name is empty")
+		return fmt.Errorf("name is empty")
 	}
 
 	row := playlistNamesDB.db.QueryRow(fmt.Sprintf(
@@ -91,7 +91,7 @@ func (playlistNamesDB *PlaylistNamesDB) CreatePlaylistName(playlistName Playlist
 	var exists bool
 	row.Scan(&exists)
 	if exists {
-		return utils.Error(playlistName.Name + " already exists")
+		return fmt.Errorf("%s already exists", playlistName.Name)
 	}
 
 	_, err := playlistNamesDB.db.Exec(fmt.Sprintf(

@@ -7,9 +7,11 @@ import (
 
 	"../utils"
 	"strings"
-	"github.com/rylio/ytdl"
+	"../ytdl"
 	"encoding/json"
 	"os/exec"
+	"fmt"
+	"strconv"
 )
 
 type Youtube struct {
@@ -25,9 +27,12 @@ func NewYoutube(data []byte) (Youtube, error) {
 }
 
 type YoutubeDB struct {
+	Host string
+
 	randomKey []byte
 
 	ytKey     string
+	ytdl      ytdl.Ytdl
 	youtubeDL string
 
 	songsRanking *rankingTree
@@ -53,6 +58,7 @@ func newYoutubeDB() (*YoutubeDB, error) {
 	}
 
 	youtubeDB := &YoutubeDB{
+		ytdl:            ytdl.NewYtdl(),
 		youtubeDL:       youtubeDL,
 		songsRanking:    new(rankingTree),
 		searchesRanking: new(rankingTree),
@@ -70,6 +76,7 @@ func newYoutubeDB() (*YoutubeDB, error) {
 			id = id[:strings.LastIndex(id, ".")]
 
 			youtubeSong := newYoutubeSong(id)
+			youtubeSong.setDownloaded(true)
 			youtubeDB.songsRanking.insert(*youtubeSong)
 			youtubeDB.songs.Store(id, youtubeSong)
 		}
@@ -86,36 +93,50 @@ func (youtubeDB *YoutubeDB) GetYoutubeSong(id string) ([]byte, error) {
 
 	loadedSong, ok := youtubeDB.songs.Load(decryptedId[:11])
 	if !ok {
-		return nil, utils.Error(id + " does not exist")
+		return nil, fmt.Errorf("%s does not exist", id)
 	}
 	youtubeSong := loadedSong.(*YoutubeSong)
 	return youtubeSong.read()
 }
 
 func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, error) {
-	videoInfo, err := ytdl.GetVideoInfoFromID(id)
+	info, err := youtubeDB.GetYoutubeInfo(id)
 	if err != nil {
-		return "", err
+		return "", nil
 	}
-	if videoInfo.Duration.Minutes() > 20 {
-		return "", utils.Error("Video too long!")
+	minutes, err := strconv.Atoi(info.Duration[:strings.Index(info.Duration, ":")])
+	if err != nil {
+		return "", nil
+	}
+	if minutes > 20 {
+		return "", fmt.Errorf("video too long")
 	}
 
-	youtubeSong := newYoutubeSong(videoInfo.ID)
-	loadedSong, loaded := youtubeDB.songs.LoadOrStore(youtubeSong.id, youtubeSong)
+	youtubeSong := newYoutubeSong(id)
+	loadedSong, loaded := youtubeDB.songs.LoadOrStore(id, youtubeSong)
 	if loaded {
 		youtubeSong = loadedSong.(*YoutubeSong)
 		youtubeSong.setLastTimeFetched()
 	}
 
-	if loaded {
-		youtubeSong.downloadWait.Wait()
+	var url string
+	if youtubeSong.isDownloaded() {
+		url = youtubeSong.getEncryptedId(youtubeDB.randomKey)
+	} else if youtubeSong.isDownloading() {
+		url = youtubeSong.getGoogleUrl()
 	} else {
-		youtubeSong.downloadWait.Add(1)
-		defer youtubeSong.downloadWait.Done()
-		youtubeDB.deleteCacheLock.RLock()
-		err = youtubeSong.download(videoInfo)
-		youtubeDB.deleteCacheLock.RUnlock()
+		youtubeSong.googleUrlLock.Lock()
+		go func() {
+			youtubeDB.deleteCacheLock.RLock()
+			youtubeSong.download(youtubeDB)
+			youtubeDB.deleteCacheLock.RUnlock()
+		}()
+		url = youtubeSong.getGoogleUrl()
+	}
+
+	if utils.StringIsEmpty(url) {
+		youtubeDB.songs.Delete(id)
+		return youtubeDB.FetchYoutubeSong(id)
 	}
 
 	if err == nil {
@@ -139,12 +160,12 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, error) {
 	} else {
 		youtubeDB.songs.Delete(youtubeSong)
 	}
-	return youtubeSong.getEncryptedId(youtubeDB.randomKey), nil
+	return url, nil
 }
 
 func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearchResult, error) {
 	if utils.StringIsEmpty(searchQuery) {
-		return nil, utils.Error("Search query is empty!")
+		return nil, fmt.Errorf("search query is empty")
 	}
 
 	youtubeSearch := newYoutubeSearch(searchQuery)
@@ -178,7 +199,7 @@ func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearc
 
 func (youtubeDB *YoutubeDB) GetYoutubeInfo(id string) (YoutubeSearchResult, error) {
 	if utils.StringIsEmpty(id) {
-		return YoutubeSearchResult{}, utils.Error("Id is empty!")
+		return YoutubeSearchResult{}, fmt.Errorf("id is empty")
 	}
 
 	youtubeId := newYoutubeId(id)

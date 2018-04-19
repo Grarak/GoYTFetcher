@@ -6,6 +6,7 @@ import (
 	"crypto/aes"
 	"io"
 	"crypto/cipher"
+	"fmt"
 )
 
 func Encode(text string) string {
@@ -60,7 +61,7 @@ func Decrypt(key []byte, cryptoText string) (string, error) {
 	}
 
 	if len(ciphertext) < aes.BlockSize {
-		return "", Error("Text too short")
+		return "", fmt.Errorf("text too short")
 	}
 
 	iv := ciphertext[:aes.BlockSize]

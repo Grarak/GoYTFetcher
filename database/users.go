@@ -205,7 +205,7 @@ func (userDB *UserDB) findUserByApiKey(apiKey string) (User, error) {
 	if len(users) > 0 {
 		return users[0], err
 	}
-	return User{}, utils.Error("No users found!")
+	return User{}, fmt.Errorf("no users found")
 }
 
 func (userDB *UserDB) FindUserByName(name string) (User, error) {
@@ -220,7 +220,7 @@ func (userDB *UserDB) findUserByName(name string) (User, error) {
 	if len(users) > 0 {
 		return users[0], err
 	}
-	return User{}, utils.Error("No users found!")
+	return User{}, fmt.Errorf("No users found")
 }
 
 func (userDB *UserDB) ListUsers(page int) ([]User, error) {
@@ -274,7 +274,7 @@ func (userDB *UserDB) ResetPasswordUser(request User) error {
 
 	password, err := utils.Decode(request.Password)
 	if len(password) <= 4 {
-		return utils.Error("Password too short")
+		return fmt.Errorf("password too short")
 	}
 
 	if err != nil {
@@ -319,7 +319,7 @@ func (userDB *UserDB) createUsers(condition string) ([]User, error) {
 			return nil, err
 		}
 		if utils.StringIsEmpty(user.Name) {
-			return nil, utils.Error("Couldn't find user with " + condition)
+			return nil, fmt.Errorf("couldn't find user with %s", condition)
 		}
 		users = append(users, user)
 	}

@@ -63,6 +63,10 @@ func GetDatabase() *Database {
 	return databaseInstance
 }
 
+func (database *Database) SetHost(host string) {
+	database.YoutubeDB.Host = host
+}
+
 func (database *Database) SetRandomKey(key []byte) {
 	database.YoutubeDB.randomKey = key
 }

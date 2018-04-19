@@ -75,7 +75,7 @@ func (playlistsDB *PlaylistsDB) AddPlaylistLink(playlistLink PlaylistLink) error
 	defer playlistsDB.rwLock.Unlock()
 
 	if utils.StringIsEmpty(playlistLink.Id) {
-		return utils.Error("Id is empty")
+		return fmt.Errorf("id is empty")
 	}
 
 	row := playlistsDB.db.QueryRow(fmt.Sprintf(
@@ -88,7 +88,7 @@ func (playlistsDB *PlaylistsDB) AddPlaylistLink(playlistLink PlaylistLink) error
 	var exists bool
 	row.Scan(&exists)
 	if exists {
-		return utils.Error(playlistLink.Name + " already exists")
+		return fmt.Errorf("%s already exists", playlistLink.Name)
 	}
 
 	_, err := playlistsDB.db.Exec(fmt.Sprintf(
