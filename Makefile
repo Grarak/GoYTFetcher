@@ -6,8 +6,8 @@ all:
 
 ytfetcher:
 	go get -u github.com/mattn/go-sqlite3
-	go get -u github.com/rylio/ytdl
 	go get -u golang.org/x/crypto/pbkdf2
+	go get -u github.com/PuerkitoBio/goquery
 	go build -i -o ytfetcher main.go
 
 ytfetcher_test:
