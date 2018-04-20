@@ -18,9 +18,7 @@ import (
 )
 
 func clientHandler(client *miniserver.Client) *miniserver.Response {
-	logger.I(client.IPAddr + ": requesting " + client.Url +
-		" with queries: " + fmt.Sprintf("%v", client.Queries) +
-		" headers: " + fmt.Sprintf("%v", client.Header))
+	logger.I(client.IPAddr + ": requesting " + client.Url)
 
 	args := strings.Split(client.Url, "/")[1:]
 	if args[0] == "api" {

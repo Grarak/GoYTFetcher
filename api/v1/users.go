@@ -7,6 +7,8 @@ import (
 	"../../database"
 	"../../utils"
 	"strconv"
+	"../../logger"
+	"fmt"
 )
 
 func usersSignUp(client *miniserver.Client) *miniserver.Response {
@@ -18,8 +20,10 @@ func usersSignUp(client *miniserver.Client) *miniserver.Response {
 	userDB := database.GetDatabase().UserDB
 	user, code := userDB.AddUser(request)
 	if code == utils.StatusNoError {
+		logger.I(fmt.Sprintf("Created new user %s", user.Name))
 		return client.CreateJsonResponse(user)
 	}
+
 	return client.CreateResponse(code)
 }
 

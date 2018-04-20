@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"fmt"
 	"strconv"
+	"regexp"
 )
 
 type Youtube struct {
@@ -39,6 +40,9 @@ type YoutubeDB struct {
 	songsRanking *rankingTree
 	songs        sync.Map
 
+	searchWebSiteRegex *regexp.Regexp
+	searchApiRegex     *regexp.Regexp
+
 	searchesRanking *rankingTree
 	searches        sync.Map
 
@@ -59,11 +63,13 @@ func newYoutubeDB() (*YoutubeDB, error) {
 	}
 
 	youtubeDB := &YoutubeDB{
-		ytdl:            ytdl.NewYtdl(),
-		youtubeDL:       youtubeDL,
-		songsRanking:    new(rankingTree),
-		searchesRanking: new(rankingTree),
-		idRanking:       new(rankingTree),
+		ytdl:               ytdl.NewYtdl(),
+		youtubeDL:          youtubeDL,
+		songsRanking:       new(rankingTree),
+		searchWebSiteRegex: regexp.MustCompile("href=\"/watch\\?v=([a-z_A-Z0-9\\-]{11})\""),
+		searchApiRegex:     regexp.MustCompile("\"videoId\":\\s+\"([a-z_A-Z0-9\\-]{11})\""),
+		searchesRanking:    new(rankingTree),
+		idRanking:          new(rankingTree),
 	}
 
 	files, err := ioutil.ReadDir(utils.YOUTUBE_DIR)
