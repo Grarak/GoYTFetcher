@@ -220,7 +220,7 @@ func (userDB *UserDB) findUserByName(name string) (User, error) {
 	if len(users) > 0 {
 		return users[0], err
 	}
-	return User{}, fmt.Errorf("No users found")
+	return User{}, fmt.Errorf("no users found")
 }
 
 func (userDB *UserDB) ListUsers(page int) ([]User, error) {
@@ -230,8 +230,18 @@ func (userDB *UserDB) ListUsers(page int) ([]User, error) {
 	if page < 1 {
 		page = 1
 	}
-	return userDB.createUsers(fmt.Sprintf(
+	users, err := userDB.createUsers(fmt.Sprintf(
 		"LIMIT 10 OFFSET %d", 10*(page-1)))
+	if err != nil {
+		return nil, err
+	}
+
+	usersNoApiKey := make([]User, len(users))
+	for i := range users {
+		usersNoApiKey[i] = users[i]
+		usersNoApiKey[i].ApiKey = ""
+	}
+	return usersNoApiKey, nil
 }
 
 func (userDB *UserDB) SetVerificationUser(request User) error {
