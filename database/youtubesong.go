@@ -9,6 +9,7 @@ import (
 
 	"../utils"
 	"crypto/aes"
+	"../logger"
 )
 
 type YoutubeSong struct {
@@ -78,13 +79,13 @@ func (youtubeSong *YoutubeSong) getGoogleUrl() string {
 
 func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
 	youtubeSong.setDownloading(true)
-	defer youtubeSong.setDownloading(false)
-	defer youtubeSong.setDownloaded(true)
 	youtubeSong.rwLock.Lock()
 	defer youtubeSong.rwLock.Unlock()
 
 	info, err := youtubeDB.ytdl.GetVideoInfoFromID(youtubeSong.id)
 	if err != nil {
+		defer youtubeSong.setDownloading(false)
+		defer youtubeSong.setDownloaded(true)
 		defer youtubeSong.googleUrlLock.Unlock()
 		return err
 	}
@@ -100,18 +101,29 @@ func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
 
 	url, err := info.GetDownloadURL(downloadFormat)
 	if err != nil {
+		defer youtubeSong.setDownloading(false)
+		defer youtubeSong.setDownloaded(true)
 		defer youtubeSong.googleUrlLock.Unlock()
 		return err
 	}
 	youtubeSong.googleUrl = url.String()
 	youtubeSong.googleUrlLock.Unlock()
 
-	file, err := os.Create(youtubeSong.getFilePath())
-	if err != nil {
-		panic(err)
+	if info.Duration.Minutes() <= 20 {
+		logger.I("Downloading " + info.Title)
+		defer logger.I("Finished downloading " + info.Title)
+
+		defer youtubeSong.setDownloading(false)
+		defer youtubeSong.setDownloaded(true)
+		file, err := os.Create(youtubeSong.getFilePath())
+		if err != nil {
+			panic(err)
+		}
+		defer file.Close()
+		return info.Download(downloadFormat, file)
 	}
-	defer file.Close()
-	return info.Download(downloadFormat, file)
+	logger.I(info.Title + " is too long, skipping download")
+	return nil
 }
 
 func (youtubeSong *YoutubeSong) delete() error {

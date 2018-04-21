@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"os/exec"
 	"fmt"
-	"strconv"
 	"regexp"
 )
 
@@ -114,13 +113,6 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, error) {
 	index := strings.Index(info.Duration, ":")
 	if index < 0 {
 		return "", nil
-	}
-	minutes, err := strconv.Atoi(info.Duration[:strings.Index(info.Duration, ":")])
-	if err != nil {
-		return "", nil
-	}
-	if minutes > 20 {
-		return "", fmt.Errorf("video too long")
 	}
 
 	youtubeSong := newYoutubeSong(id)
