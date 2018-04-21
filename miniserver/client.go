@@ -32,7 +32,7 @@ func newClient(request *http.Request) *Client {
 }
 
 func (client *Client) IsContentJson() bool {
-	return client.Header.Get("Content-Type") == ContentJson
+	return strings.HasPrefix(client.Header.Get("Content-Type"), ContentJson)
 }
 
 func (client *Client) ResponseBody(body string) *Response {
