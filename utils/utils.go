@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net"
 	"log"
+	"os/exec"
+	"io/ioutil"
 )
 
 func Panic(err error) {
@@ -43,16 +45,6 @@ func FormatMinutesSeconds(minutes, seconds int) string {
 	return fmt.Sprintf("%s:%s", m, s)
 }
 
-func ReverseStringSlice(s []string) {
-	for i, j := 0, len(s)-1; i < len(s)/2; i, j = i+1, j-1 {
-		s[i], s[j] = s[j], s[i]
-	}
-}
-
-func InterfaceToString(val interface{}) string {
-	return fmt.Sprintf("%v", val)
-}
-
 func GetOutboundIP() net.IP {
 	conn, err := net.Dial("udp", "8.8.8.8:80")
 	if err != nil {
@@ -62,4 +54,29 @@ func GetOutboundIP() net.IP {
 
 	localAddr := conn.LocalAddr().(*net.UDPAddr)
 	return localAddr.IP
+}
+
+func ExecuteCmd(name string, arg ...string) (string, error) {
+	cmd := exec.Command(name, arg...)
+
+	reader, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		return "", err
+	}
+
+	buf, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return "", err
+	}
+	return string(buf), nil
+}
+
+func FileExists(file string) bool {
+	_, err := os.Stat(file)
+	return err == nil
 }

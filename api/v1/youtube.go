@@ -61,7 +61,7 @@ func youtubeGet(client *miniserver.Client) *miniserver.Response {
 	}
 
 	response := client.ResponseBodyBytes(data)
-	response.SetContentType(miniserver.ContentWebm)
+	response.SetContentType("")
 	return response
 }
 

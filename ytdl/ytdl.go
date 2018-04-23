@@ -12,23 +12,20 @@ import (
 	"encoding/json"
 	"bytes"
 	"github.com/PuerkitoBio/goquery"
-
+	"../utils"
 	"../logger"
-	"encoding/xml"
-	"io"
+	"os"
 )
 
 const youtubeBaseURL = "https://www.youtube.com/watch"
 
 type Ytdl struct {
-	jsonRegex, sigRegex, sigSubRegex *regexp.Regexp
+	jsonRegex *regexp.Regexp
 }
 
 func NewYtdl() Ytdl {
 	return Ytdl{
 		regexp.MustCompile("ytplayer.config = (.*?);ytplayer.load"),
-		regexp.MustCompile("\\/s\\/([a-fA-F0-9\\.]+)"),
-		regexp.MustCompile("([a-fA-F0-9\\.]+)"),
 	}
 }
 
@@ -38,12 +35,8 @@ type VideoInfo struct {
 	ID string `json:"id"`
 	// The video title
 	Title string `json:"title"`
-	// Formats the video is available in
-	Formats FormatList `json:"formats"`
 	// Duration of the video
 	Duration time.Duration
-
-	htmlPlayerFile string
 }
 
 func (ytdl Ytdl) GetVideoInfoFromID(id string) (*VideoInfo, error) {
@@ -106,119 +99,7 @@ func (ytdl Ytdl) getVideoInfoFromHTML(id string, html []byte) (*VideoInfo, error
 	} else {
 		logger.E("Unable to extract duration")
 	}
-
-	info.htmlPlayerFile = jsonConfig["assets"].(map[string]interface{})["js"].(string)
-
-	var formatStrings []string
-	if fmtStreamMap, ok := inf["url_encoded_fmt_stream_map"].(string); ok {
-		formatStrings = append(formatStrings, strings.Split(fmtStreamMap, ",")...)
-	}
-
-	if adaptiveFormats, ok := inf["adaptive_fmts"].(string); ok {
-		formatStrings = append(formatStrings, strings.Split(adaptiveFormats, ",")...)
-	}
-	var formats FormatList
-	for _, v := range formatStrings {
-		query, err := url.ParseQuery(v)
-		if err == nil {
-			itag, _ := strconv.Atoi(query.Get("itag"))
-			if format, ok := newFormat(itag); ok {
-				if strings.HasPrefix(query.Get("conn"), "rtmp") {
-					format.meta["rtmp"] = true
-				}
-				for k, v := range query {
-					if len(v) == 1 {
-						format.meta[k] = v[0]
-					} else {
-						format.meta[k] = v
-					}
-				}
-				formats = append(formats, format)
-			} else {
-				logger.I(fmt.Sprintf("No metadata found for itag: %d, skipping...", itag))
-			}
-		} else {
-			logger.I(fmt.Sprintf("Unable to format string %s", err.Error()))
-		}
-	}
-
-	if dashManifestURL, ok := inf["dashmpd"].(string); ok {
-		tokens, err := getSigTokens(info.htmlPlayerFile)
-		if err != nil {
-			return nil, fmt.Errorf("unable to extract signature tokens: %s", err.Error())
-		}
-		dashManifestURL = ytdl.sigRegex.ReplaceAllStringFunc(dashManifestURL, func(str string) string {
-			return "/signature/" + decipherTokens(tokens, ytdl.sigSubRegex.FindString(str))
-		})
-		dashFormats, err := getDashManifest(dashManifestURL)
-		if err != nil {
-			return nil, fmt.Errorf("unable to extract dash manifest: %s", err.Error())
-		}
-
-		for _, dashFormat := range dashFormats {
-			added := false
-			for j, format := range formats {
-				if dashFormat.Itag == format.Itag {
-					formats[j] = dashFormat
-					added = true
-					break
-				}
-			}
-			if !added {
-				formats = append(formats, dashFormat)
-			}
-		}
-	}
-	info.Formats = formats
 	return info, nil
-}
-
-type representation struct {
-	Itag   int    `xml:"id,attr"`
-	Height int    `xml:"height,attr"`
-	URL    string `xml:"BaseURL"`
-}
-
-func getDashManifest(urlString string) (formats []Format, err error) {
-
-	resp, err := http.Get(urlString)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("invalid status code %d", resp.StatusCode)
-	}
-	dec := xml.NewDecoder(resp.Body)
-	var token xml.Token
-	for ; err == nil; token, err = dec.Token() {
-		if el, ok := token.(xml.StartElement); ok && el.Name.Local == "Representation" {
-			var rep representation
-			err = dec.DecodeElement(&rep, &el)
-			if err != nil {
-				break
-			}
-			if format, ok := newFormat(rep.Itag); ok {
-				format.meta["url"] = rep.URL
-				if rep.Height != 0 {
-					format.Resolution = strconv.Itoa(rep.Height) + "p"
-				} else {
-					format.Resolution = ""
-				}
-				formats = append(formats, format)
-			} else {
-				logger.I(fmt.Sprintf("No metadata found for itag: %d, skipping...", rep.Itag))
-			}
-		}
-	}
-	if err != io.EOF {
-		return nil, err
-	}
-	return formats, nil
-}
-
-func (info *VideoInfo) GetDownloadURL(format Format) (*url.URL, error) {
-	return getDownloadURL(format, info.htmlPlayerFile)
 }
 
 func (info *VideoInfo) GetThumbnailURL(quality ThumbnailQuality) *url.URL {
@@ -227,19 +108,42 @@ func (info *VideoInfo) GetThumbnailURL(quality ThumbnailQuality) *url.URL {
 	return u
 }
 
-func (info *VideoInfo) Download(format Format, dest io.Writer) error {
-	u, err := info.GetDownloadURL(format)
+func (info *VideoInfo) GetDownloadURL(youtubeDL string) (string, error) {
+	return utils.ExecuteCmd(youtubeDL, "--get-url", "--extract-audio",
+		"--audio-format", "vorbis", info.ID)
+}
+
+func (info *VideoInfo) GetDownloadURLWorst(youtubeDL string) (string, error) {
+	return utils.ExecuteCmd(youtubeDL, "--get-url", "-f", "worstaudio", info.ID)
+}
+
+func (info *VideoInfo) Download(path, youtubeDL, ffmpeg string) (string, error) {
+	destination := path + "/" + info.ID
+	destinationTmp := destination + "-tmp.%(ext)s"
+
+	output, err := utils.ExecuteCmd(youtubeDL, "--extract-audio",
+		"--audio-format", "vorbis", "--output", destinationTmp, info.ID)
 	if err != nil {
-		return err
+		return "", err
 	}
-	resp, err := http.Get(u.String())
+
+	lines := strings.Split(output, "\n")
+	for _, line := range lines {
+		if strings.HasPrefix(line, "[ffmpeg] Destination:") {
+			destinationTmp = line[strings.Index(line, path):]
+			break
+		}
+	}
+
+	destination = strings.Replace(destinationTmp, info.ID+"-tmp", info.ID, 1)
+	_, err = utils.ExecuteCmd(ffmpeg, "-y", "-i", destinationTmp, "-ab", "96k", destination)
+	os.Remove(destinationTmp)
 	if err != nil {
-		return err
+		return "", err
 	}
-	defer resp.Body.Close()
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return fmt.Errorf("invalid status code: %d", resp.StatusCode)
+	if !utils.FileExists(destination) {
+		return "", fmt.Errorf(destination + " does not exists")
 	}
-	_, err = io.Copy(dest, resp.Body)
-	return err
+
+	return destination, nil
 }

@@ -35,6 +35,7 @@ type YoutubeDB struct {
 	ytKey     string
 	ytdl      ytdl.Ytdl
 	youtubeDL string
+	ffmpeg    string
 
 	songsRanking *rankingTree
 	songs        sync.Map
@@ -61,9 +62,15 @@ func newYoutubeDB() (*YoutubeDB, error) {
 		return nil, err
 	}
 
+	ffmpeg, err := exec.LookPath(utils.FFMPEG)
+	if err != nil {
+		return nil, err
+	}
+
 	youtubeDB := &YoutubeDB{
 		ytdl:               ytdl.NewYtdl(),
 		youtubeDL:          youtubeDL,
+		ffmpeg:             ffmpeg,
 		songsRanking:       new(rankingTree),
 		searchWebSiteRegex: regexp.MustCompile("href=\"/watch\\?v=([a-z_A-Z0-9\\-]{11})\""),
 		searchApiRegex:     regexp.MustCompile("\"videoId\":\\s+\"([a-z_A-Z0-9\\-]{11})\""),
@@ -83,6 +90,7 @@ func newYoutubeDB() (*YoutubeDB, error) {
 
 			youtubeSong := newYoutubeSong(id)
 			youtubeSong.setDownloaded(true)
+			youtubeSong.filePath = utils.YOUTUBE_DIR + "/" + file.Name()
 			youtubeDB.songsRanking.insert(*youtubeSong)
 			youtubeDB.songs.Store(id, youtubeSong)
 		}
@@ -102,6 +110,9 @@ func (youtubeDB *YoutubeDB) GetYoutubeSong(id string) ([]byte, error) {
 		return nil, fmt.Errorf("%s does not exist", id)
 	}
 	youtubeSong := loadedSong.(*YoutubeSong)
+	if !youtubeSong.isDownloaded() {
+		return nil, fmt.Errorf("%s is not downloaded", id)
+	}
 	return youtubeSong.read()
 }
 

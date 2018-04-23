@@ -7,4 +7,5 @@ const (
 	YOUTUBE_DIR = FILES + "/youtube"
 
 	YOUTUBE_DL = "youtube-dl"
+	FFMPEG = "ffmpeg"
 )

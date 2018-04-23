@@ -1,14 +1,14 @@
 package miniserver
 
 import (
-	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"net"
 	"strconv"
 
 	"../utils"
+	"strings"
+	"fmt"
 )
 
 const (
@@ -19,7 +19,7 @@ const (
 	ContentCss        = "text/css"
 	ContentXIcon      = "image/x-icon"
 	ContentSVG        = "image/svg+xml"
-	ContentWebm       = "audio/webm"
+	ContentOgg        = "audio/vorbis"
 )
 
 type MiniServer struct {
@@ -46,11 +46,13 @@ func (miniserver *MiniServer) StartListening(callback func(client *Client) *Resp
 			response.Write([]byte("Not found"))
 		} else {
 			content := res.body
-			response.Header().Set("Content-Type", fmt.Sprintf("%s", res.contentType))
+			if !utils.StringIsEmpty(res.contentType) {
+				response.Header().Set("Content-Type", res.contentType)
+			}
 			response.Header().Set("Server", res.serverDescription)
 
-			if len(res.file) > 0 {
-				if _, err := os.Stat(res.file); err == nil {
+			if utils.StringIsEmpty(res.file) {
+				if utils.FileExists(res.file) {
 					buf, err := ioutil.ReadFile(res.file)
 					if err == nil {
 						content = buf
@@ -58,8 +60,47 @@ func (miniserver *MiniServer) StartListening(callback func(client *Client) *Resp
 				}
 			}
 
+			rangeParser := func(headers http.Header, response []byte, ranges string) []byte {
+				ranges = strings.Replace(ranges, "bytes=", "", 1)
+
+				responseLength := len(response)
+				middleIndex := strings.Index(ranges, "-")
+				start, err := strconv.Atoi(ranges[:middleIndex])
+				if err != nil {
+					return response
+				}
+				end := responseLength - 1
+				if middleIndex+1 < len(ranges) {
+					end, err = strconv.Atoi(ranges[middleIndex+1:])
+					if err != nil {
+						return response
+					}
+					if end >= responseLength {
+						end = responseLength - 1
+					}
+				}
+
+				var finalResponse []byte
+				finalResponse = append(finalResponse, response[start:end+1]...)
+
+				headers.Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, responseLength))
+				return finalResponse
+			}
+
+			ranges := client.Header.Get("Range")
+
+			statusCode := res.statusCode
+			if statusCode == http.StatusOK &&
+				strings.HasPrefix(ranges, "bytes=") &&
+				strings.Contains(ranges, "-") {
+				content = rangeParser(response.Header(), content, ranges)
+				statusCode = http.StatusPartialContent
+			}
+
+			response.Header().Set("Accept-Ranges", "bytes")
 			response.Header().Set("Content-Length", strconv.Itoa(len(content)))
-			response.WriteHeader(res.statusCode)
+
+			response.WriteHeader(statusCode)
 			response.Write(content)
 		}
 	})

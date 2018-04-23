@@ -4,7 +4,6 @@ import (
 	"time"
 	"sync"
 	"io/ioutil"
-	"../ytdl"
 	"os"
 
 	"../utils"
@@ -21,16 +20,15 @@ type YoutubeSong struct {
 	lastFetched     time.Time
 	lastFetchedLock *sync.RWMutex
 
-	encryptedId     string
-	encryptedIdLock sync.Mutex
+	downloaded   bool
+	downloading  bool
+	downloadLock sync.RWMutex
 
-	downloaded     bool
-	downloadedLock sync.RWMutex
+	filePath string
+	deleted  bool
 
-	downloading     bool
-	downloadingLock sync.RWMutex
-
-	rwLock sync.RWMutex
+	encryptedId string
+	rwLock      sync.RWMutex
 }
 
 func newYoutubeSong(id string) *YoutubeSong {
@@ -42,26 +40,26 @@ func newYoutubeSong(id string) *YoutubeSong {
 }
 
 func (youtubeSong *YoutubeSong) isDownloaded() bool {
-	youtubeSong.downloadedLock.RLock()
-	defer youtubeSong.downloadedLock.RUnlock()
+	youtubeSong.downloadLock.RLock()
+	defer youtubeSong.downloadLock.RUnlock()
 	return youtubeSong.downloaded
 }
 
 func (youtubeSong *YoutubeSong) setDownloaded(downloaded bool) {
-	youtubeSong.downloadedLock.Lock()
-	defer youtubeSong.downloadedLock.Unlock()
+	youtubeSong.downloadLock.Lock()
+	defer youtubeSong.downloadLock.Unlock()
 	youtubeSong.downloaded = downloaded
 }
 
 func (youtubeSong *YoutubeSong) isDownloading() bool {
-	youtubeSong.downloadingLock.RLock()
-	defer youtubeSong.downloadingLock.RUnlock()
+	youtubeSong.downloadLock.RLock()
+	defer youtubeSong.downloadLock.RUnlock()
 	return youtubeSong.downloading
 }
 
 func (youtubeSong *YoutubeSong) setDownloading(downloading bool) {
-	youtubeSong.downloadingLock.Lock()
-	defer youtubeSong.downloadingLock.Unlock()
+	youtubeSong.downloadLock.Lock()
+	defer youtubeSong.downloadLock.Unlock()
 	youtubeSong.downloading = downloading
 }
 
@@ -85,28 +83,22 @@ func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
 	info, err := youtubeDB.ytdl.GetVideoInfoFromID(youtubeSong.id)
 	if err != nil {
 		defer youtubeSong.setDownloading(false)
-		defer youtubeSong.setDownloaded(true)
 		defer youtubeSong.googleUrlLock.Unlock()
 		return err
 	}
 
-	formats := info.Formats.Worst(ytdl.FormatAudioEncodingKey)
-	var downloadFormat ytdl.Format
-	for _, format := range formats {
-		if format.AudioEncoding == "opus" {
-			downloadFormat = format
-			break
-		}
+	var url string
+	if info.Duration.Minutes() <= 20 {
+		url, err = info.GetDownloadURL(youtubeDB.youtubeDL)
+	} else {
+		url, err = info.GetDownloadURLWorst(youtubeDB.youtubeDL)
 	}
-
-	url, err := info.GetDownloadURL(downloadFormat)
 	if err != nil {
 		defer youtubeSong.setDownloading(false)
-		defer youtubeSong.setDownloaded(true)
 		defer youtubeSong.googleUrlLock.Unlock()
 		return err
 	}
-	youtubeSong.googleUrl = url.String()
+	youtubeSong.googleUrl = url
 	youtubeSong.googleUrlLock.Unlock()
 
 	if info.Duration.Minutes() <= 20 {
@@ -115,12 +107,17 @@ func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
 
 		defer youtubeSong.setDownloading(false)
 		defer youtubeSong.setDownloaded(true)
-		file, err := os.Create(youtubeSong.getFilePath())
+
+		path, err := info.Download(utils.YOUTUBE_DIR, youtubeDB.youtubeDL, youtubeDB.ffmpeg)
 		if err != nil {
-			panic(err)
+			return err
 		}
-		defer file.Close()
-		return info.Download(downloadFormat, file)
+		youtubeSong.filePath = path
+
+		if youtubeSong.deleted {
+			os.Remove(youtubeSong.getFilePath())
+		}
+		return nil
 	}
 	logger.I(info.Title + " is too long, skipping download")
 	return nil
@@ -129,6 +126,7 @@ func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
 func (youtubeSong *YoutubeSong) delete() error {
 	youtubeSong.rwLock.Lock()
 	defer youtubeSong.rwLock.Unlock()
+	youtubeSong.deleted = true
 	return os.Remove(youtubeSong.getFilePath())
 }
 
@@ -139,12 +137,12 @@ func (youtubeSong *YoutubeSong) setLastTimeFetched() {
 }
 
 func (youtubeSong *YoutubeSong) getFilePath() string {
-	return utils.YOUTUBE_DIR + "/" + youtubeSong.id + ".webm"
+	return youtubeSong.filePath
 }
 
 func (youtubeSong *YoutubeSong) getEncryptedId(key []byte) string {
-	youtubeSong.encryptedIdLock.Lock()
-	defer youtubeSong.encryptedIdLock.Unlock()
+	youtubeSong.rwLock.RLock()
+	defer youtubeSong.rwLock.RUnlock()
 	if utils.StringIsEmpty(youtubeSong.encryptedId) {
 		id := youtubeSong.id
 		for i := len(id); i < aes.BlockSize; i++ {

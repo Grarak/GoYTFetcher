@@ -19,6 +19,7 @@ import (
 
 func clientHandler(client *miniserver.Client) *miniserver.Response {
 	logger.I(client.IPAddr + ": requesting " + client.Method + " " + client.Url)
+	fmt.Println(client.Header)
 
 	args := strings.Split(client.Url, "/")[1:]
 	if args[0] == "api" {
@@ -33,6 +34,18 @@ func clientHandler(client *miniserver.Client) *miniserver.Response {
 func main() {
 	if _, err := exec.LookPath(utils.YOUTUBE_DL); err != nil {
 		logger.E(utils.YOUTUBE_DL + " is not installed!")
+		return
+	}
+
+	ffmpeg, err := exec.LookPath(utils.FFMPEG)
+	if err != nil {
+		logger.E(utils.FFMPEG + " is not installed!")
+		return
+	}
+
+	codecs, err := utils.ExecuteCmd(ffmpeg, "-codecs")
+	if err != nil || !strings.Contains(codecs, "libvorbis") {
+		logger.E(utils.FFMPEG + " vorbis is not enabled")
 		return
 	}
 
