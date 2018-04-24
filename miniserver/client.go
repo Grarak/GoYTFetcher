@@ -20,11 +20,16 @@ func newClient(request *http.Request) *Client {
 	defer request.Body.Close()
 
 	body, _ := ioutil.ReadAll(request.Body)
+	ipAddr := request.RemoteAddr[:strings.LastIndex(request.RemoteAddr, ":")]
+	if cfConnectionIP := request.Header.Get("Cf-Connecting-Ip");
+		!utils.StringIsEmpty(cfConnectionIP) {
+		ipAddr = cfConnectionIP
+	}
 
 	return &Client{
 		request.URL.Path,
 		request.Method,
-		request.RemoteAddr[:strings.LastIndex(request.RemoteAddr, ":")],
+		ipAddr,
 		body,
 		request.Header,
 		request.Form,
