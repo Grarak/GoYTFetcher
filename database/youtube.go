@@ -130,7 +130,7 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, error) {
 	loadedSong, loaded := youtubeDB.songs.LoadOrStore(id, youtubeSong)
 	if loaded {
 		youtubeSong = loadedSong.(*YoutubeSong)
-		youtubeSong.setLastTimeFetched()
+		youtubeSong.increaseCount()
 	}
 
 	var url string
@@ -186,10 +186,10 @@ func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearc
 	loadedSearch, loaded := youtubeDB.searches.LoadOrStore(youtubeSearch.query, youtubeSearch)
 	if loaded {
 		youtubeSearch = loadedSearch.(*YoutubeSearch)
-		youtubeSearch.setLastTimeFetched()
+		youtubeSearch.increaseCount()
 	}
 
-	var results []YoutubeSearchResult
+	var results []string
 	var err error
 	if loaded {
 		results = youtubeSearch.getResults()
@@ -208,7 +208,15 @@ func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearc
 	} else {
 		youtubeDB.searches.Delete(youtubeSearch)
 	}
-	return results, err
+
+	youtubeSearchResults := make([]YoutubeSearchResult, 0)
+	for _, id := range results {
+		result, err := youtubeDB.GetYoutubeInfo(id)
+		if err == nil {
+			youtubeSearchResults = append(youtubeSearchResults, result)
+		}
+	}
+	return youtubeSearchResults, err
 }
 
 func (youtubeDB *YoutubeDB) GetYoutubeInfo(id string) (YoutubeSearchResult, error) {
@@ -220,7 +228,7 @@ func (youtubeDB *YoutubeDB) GetYoutubeInfo(id string) (YoutubeSearchResult, erro
 	loadedId, loaded := youtubeDB.ids.LoadOrStore(youtubeId.id, youtubeId)
 	if loaded {
 		youtubeId = loadedId.(*YoutubeId)
-		youtubeId.setLastTimeFetched()
+		youtubeId.increaseCount()
 	}
 
 	var result YoutubeSearchResult

@@ -8,8 +8,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/url"
-	"math/rand"
 	"sync"
+	"math/rand"
 )
 
 var port int
@@ -20,23 +20,17 @@ func main() {
 }
 
 func createUsers() {
-	count := 0
-	channel := make(chan bool)
+	var wait sync.WaitGroup
 	signup := func(i int) {
 		signupUser(fmt.Sprintf("someUser%d", i),
 			"12345")
-		channel <- true
+		wait.Done()
 	}
 	for i := 0; i < 100; i++ {
+		wait.Add(1)
 		go signup(i)
 	}
-	for {
-		<-channel
-		count++
-		if count == 100 {
-			break
-		}
-	}
+	wait.Wait()
 }
 
 func signupUser(name, password string) error {
@@ -194,14 +188,43 @@ func getChartsYoutube(apiKey string) error {
 	return nil
 }
 
+func fetchYoutube(apiKey, id string) error {
+	youtubeSearch := Youtube{
+		Apikey: apiKey,
+		Id:     id,
+	}
+
+	b, err := json.Marshal(youtubeSearch)
+	if err != nil {
+		return err
+	}
+
+	res, err := http.Post(
+		getUrl("v1", "youtube/fetch"),
+		"application/json",
+		bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+
+	b, err = ioutil.ReadAll(res.Body)
+	defer res.Body.Close()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("fetch youtube: " + string(b))
+	return nil
+}
+
 func testDatastructures() {
 	ranking := &rankingTree{}
 
 	var datas []YoutubeSong
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		datas = append(datas, YoutubeSong{
 			fmt.Sprintf("someid%d", i),
-			rand.Intn(1000)})
+			rand.Intn(1)})
 	}
 
 	var wait sync.WaitGroup
@@ -214,6 +237,7 @@ func testDatastructures() {
 	}
 	wait.Wait()
 
+	ranking.delete(datas[9])
 	fmt.Println(fmt.Sprintf("size: %d", ranking.getSize()))
 
 	startNode := ranking.start

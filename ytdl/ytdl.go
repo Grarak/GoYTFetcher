@@ -18,6 +18,7 @@ import (
 )
 
 const youtubeBaseURL = "https://www.youtube.com/watch"
+const youtubeInfoURL = "https://www.youtube.com/get_video_info"
 
 type Ytdl struct {
 	jsonRegex *regexp.Regexp
@@ -40,6 +41,45 @@ type VideoInfo struct {
 }
 
 func (ytdl Ytdl) GetVideoInfoFromID(id string) (*VideoInfo, error) {
+	u, _ := url.ParseRequestURI(youtubeInfoURL)
+	values := u.Query()
+	values.Set("video_id", id)
+	u.RawQuery = values.Encode()
+
+	resp, err := http.Get(u.String())
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return ytdl.getVideoInfoFromHTML(id)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	values, err = url.ParseQuery(string(body))
+	if err != nil {
+		return ytdl.getVideoInfoFromHTML(id)
+	}
+	if status := values.Get("status"); utils.StringIsEmpty(status) || status != "ok" {
+		return ytdl.getVideoInfoFromHTML(id)
+	}
+
+	title := values.Get("title")
+	length := values.Get("length_seconds")
+	if utils.StringIsEmpty(title) || utils.StringIsEmpty(length) {
+		return ytdl.getVideoInfoFromHTML(id)
+	}
+
+	duration, err := time.ParseDuration(length + "s")
+	if err != nil {
+		return ytdl.getVideoInfoFromHTML(id)
+	}
+	return &VideoInfo{ID: id, Title: title, Duration: duration}, nil
+}
+
+func (ytdl Ytdl) getVideoInfoFromHTML(id string) (*VideoInfo, error) {
 	u, _ := url.ParseRequestURI(youtubeBaseURL)
 	values := u.Query()
 	values.Set("v", id)
@@ -57,10 +97,10 @@ func (ytdl Ytdl) GetVideoInfoFromID(id string) (*VideoInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ytdl.getVideoInfoFromHTML(id, body)
+	return ytdl.parseVideoInfoFromHTML(id, body)
 }
 
-func (ytdl Ytdl) getVideoInfoFromHTML(id string, html []byte) (*VideoInfo, error) {
+func (ytdl Ytdl) parseVideoInfoFromHTML(id string, html []byte) (*VideoInfo, error) {
 	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(html))
 	if err != nil {
 		return nil, err

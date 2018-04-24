@@ -82,20 +82,46 @@ func (tree *rankingTree) getSize() int {
 type node struct {
 	rankingItem rankingInterface
 	left, right *node
+	children    int
 }
 
 func (nodeLeaf *node) insert(rankingItem rankingInterface) {
-	if rankingItem.GetCount() < nodeLeaf.rankingItem.GetCount() {
+	nodeLeaf.children++
+
+	leftSize := 0
+	rightSize := 0
+	if nodeLeaf.left != nil {
+		leftSize = nodeLeaf.left.children
+	}
+	if nodeLeaf.right != nil {
+		rightSize = nodeLeaf.right.children
+	}
+
+	insertLeft := func() {
 		if nodeLeaf.left == nil {
 			nodeLeaf.left = &node{rankingItem: rankingItem}
 		} else {
 			nodeLeaf.left.insert(rankingItem)
 		}
-	} else {
+	}
+
+	insertRight := func() {
 		if nodeLeaf.right == nil {
 			nodeLeaf.right = &node{rankingItem: rankingItem}
 		} else {
 			nodeLeaf.right.insert(rankingItem)
+		}
+	}
+
+	if rankingItem.GetCount() < nodeLeaf.rankingItem.GetCount() {
+		insertLeft()
+	} else if rankingItem.GetCount() > nodeLeaf.rankingItem.GetCount() {
+		insertRight()
+	} else {
+		if leftSize < rightSize {
+			insertLeft()
+		} else {
+			insertRight()
 		}
 	}
 }
@@ -104,10 +130,12 @@ func (nodeLeaf *node) delete(rankingItem rankingInterface) bool {
 	if nodeLeaf.left != nil &&
 		nodeLeaf.left.rankingItem.GetUniqueId() == rankingItem.GetUniqueId() {
 		nodeLeaf.left = createReplaceNode(nodeLeaf.left)
+		nodeLeaf.children--
 		return true
 	} else if nodeLeaf.right != nil &&
 		nodeLeaf.right.rankingItem.GetUniqueId() == rankingItem.GetUniqueId() {
 		nodeLeaf.right = createReplaceNode(nodeLeaf.right)
+		nodeLeaf.children--
 		return true
 	}
 
@@ -115,8 +143,19 @@ func (nodeLeaf *node) delete(rankingItem rankingInterface) bool {
 		if nodeLeaf.left != nil {
 			return nodeLeaf.left.delete(rankingItem)
 		}
-	} else if nodeLeaf.right != nil {
-		return nodeLeaf.right.delete(rankingItem)
+	} else if rankingItem.GetCount() > nodeLeaf.rankingItem.GetCount() {
+		if nodeLeaf.right != nil {
+			return nodeLeaf.right.delete(rankingItem)
+		}
+	} else {
+		deleted := false
+		if nodeLeaf.left != nil {
+			deleted = nodeLeaf.left.delete(rankingItem)
+		}
+		if !deleted && nodeLeaf.right != nil {
+			deleted = nodeLeaf.right.delete(rankingItem)
+		}
+		return deleted
 	}
 
 	return false
@@ -139,12 +178,15 @@ func createReplaceNode(replacedNode *node) *node {
 	}
 
 	if newNode.left == nil {
+		newNode.children += replacedNode.left.children
 		newNode.left = replacedNode.left
 		return newNode
 	}
 	lastLeftNode := newNode.left
+	lastLeftNode.children += replacedNode.left.children
 	for lastLeftNode.left != nil {
 		lastLeftNode = lastLeftNode.left
+		lastLeftNode.children += replacedNode.left.children
 	}
 	lastLeftNode.left = replacedNode.left
 	return newNode

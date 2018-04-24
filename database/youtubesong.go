@@ -1,7 +1,6 @@
 package database
 
 import (
-	"time"
 	"sync"
 	"io/ioutil"
 	"os"
@@ -17,8 +16,8 @@ type YoutubeSong struct {
 	googleUrl     string
 	googleUrlLock sync.RWMutex
 
-	lastFetched     time.Time
-	lastFetchedLock *sync.RWMutex
+	count     int
+	countLock sync.RWMutex
 
 	downloaded   bool
 	downloading  bool
@@ -32,11 +31,7 @@ type YoutubeSong struct {
 }
 
 func newYoutubeSong(id string) *YoutubeSong {
-	return &YoutubeSong{
-		id:              id,
-		lastFetched:     time.Now(),
-		lastFetchedLock: &sync.RWMutex{},
-	}
+	return &YoutubeSong{id: id, count: 1}
 }
 
 func (youtubeSong *YoutubeSong) isDownloaded() bool {
@@ -130,12 +125,6 @@ func (youtubeSong *YoutubeSong) delete() error {
 	return os.Remove(youtubeSong.getFilePath())
 }
 
-func (youtubeSong *YoutubeSong) setLastTimeFetched() {
-	youtubeSong.lastFetchedLock.Lock()
-	defer youtubeSong.lastFetchedLock.Unlock()
-	youtubeSong.lastFetched = time.Now()
-}
-
 func (youtubeSong *YoutubeSong) getFilePath() string {
 	return youtubeSong.filePath
 }
@@ -153,12 +142,18 @@ func (youtubeSong *YoutubeSong) getEncryptedId(key []byte) string {
 	return youtubeSong.encryptedId
 }
 
+func (youtubeSong *YoutubeSong) increaseCount() {
+	youtubeSong.countLock.Lock()
+	defer youtubeSong.countLock.Unlock()
+	youtubeSong.count++
+}
+
 func (youtubeSong YoutubeSong) GetUniqueId() string {
 	return youtubeSong.id
 }
 
-func (youtubeSong YoutubeSong) GetTime() time.Time {
-	youtubeSong.lastFetchedLock.RLock()
-	defer youtubeSong.lastFetchedLock.RUnlock()
-	return youtubeSong.lastFetched
+func (youtubeSong YoutubeSong) GetCount() int {
+	youtubeSong.countLock.RLock()
+	defer youtubeSong.countLock.RUnlock()
+	return youtubeSong.count
 }

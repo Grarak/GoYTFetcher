@@ -1,7 +1,6 @@
 package database
 
 import (
-	"time"
 	"sync"
 	"../utils"
 )
@@ -10,18 +9,14 @@ type YoutubeId struct {
 	id     string
 	result YoutubeSearchResult
 
-	lastFetched     time.Time
-	lastFetchedLock *sync.RWMutex
+	count     int
+	countLock sync.RWMutex
 
 	rwLock sync.RWMutex
 }
 
 func newYoutubeId(id string) *YoutubeId {
-	return &YoutubeId{
-		id:              id,
-		lastFetched:     time.Now(),
-		lastFetchedLock: &sync.RWMutex{},
-	}
+	return &YoutubeId{id: id, count: 1}
 }
 
 func (youtubeId *YoutubeId) fetchId(youtubeDB *YoutubeDB) (YoutubeSearchResult, error) {
@@ -45,18 +40,18 @@ func (youtubeId *YoutubeId) getResult() YoutubeSearchResult {
 	return youtubeId.result
 }
 
-func (youtubeId *YoutubeId) setLastTimeFetched() {
-	youtubeId.lastFetchedLock.Lock()
-	defer youtubeId.lastFetchedLock.Unlock()
-	youtubeId.lastFetched = time.Now()
+func (youtubeId *YoutubeId) increaseCount() {
+	youtubeId.countLock.Lock()
+	defer youtubeId.countLock.Unlock()
+	youtubeId.count++
 }
 
 func (youtubeId YoutubeId) GetUniqueId() string {
 	return youtubeId.id
 }
 
-func (youtubeId YoutubeId) GetTime() time.Time {
-	youtubeId.lastFetchedLock.RLock()
-	defer youtubeId.lastFetchedLock.RUnlock()
-	return youtubeId.lastFetched
+func (youtubeId YoutubeId) GetCount() int {
+	youtubeId.countLock.RLock()
+	defer youtubeId.countLock.RUnlock()
+	return youtubeId.count
 }

@@ -1,7 +1,6 @@
 package database
 
 import (
-	"time"
 	"sync"
 	"os/exec"
 	"regexp"
@@ -21,10 +20,10 @@ import (
 
 type YoutubeSearch struct {
 	query   string
-	results []YoutubeSearchResult
+	results []string
 
-	lastFetched     time.Time
-	lastFetchedLock *sync.RWMutex
+	count     int
+	countLock sync.RWMutex
 
 	rwLock sync.RWMutex
 }
@@ -49,11 +48,7 @@ func newYoutubeSearch(searchQuery string) *YoutubeSearch {
 	sort.Sort(words)
 	searchQuery = strings.Join(words, " ")
 
-	return &YoutubeSearch{
-		query:           searchQuery,
-		lastFetched:     time.Now(),
-		lastFetchedLock: &sync.RWMutex{},
-	}
+	return &YoutubeSearch{query: searchQuery, count: 1}
 }
 
 type YoutubeSearchResult struct {
@@ -63,7 +58,7 @@ type YoutubeSearchResult struct {
 	Duration  string `json:"duration"`
 }
 
-func (youtubeSearch *YoutubeSearch) search(youtubeDB *YoutubeDB) ([]YoutubeSearchResult, error) {
+func (youtubeSearch *YoutubeSearch) search(youtubeDB *YoutubeDB) ([]string, error) {
 	youtubeSearch.rwLock.Lock()
 	defer youtubeSearch.rwLock.Unlock()
 
@@ -81,27 +76,15 @@ func (youtubeSearch *YoutubeSearch) search(youtubeDB *YoutubeDB) ([]YoutubeSearc
 	return results, err
 }
 
-func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(youtubeDB *YoutubeDB) ([]YoutubeSearchResult, error) {
+func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(youtubeDB *YoutubeDB) ([]string, error) {
 	searchUrl := "https://www.youtube.com/results?"
 	query := url.Values{}
 	query.Set("search_query", youtubeSearch.query)
 
-	ids, err := parseYoutubeSearchFromURL(searchUrl+query.Encode(), youtubeDB.searchWebSiteRegex)
-	if err != nil {
-		return nil, err
-	}
-
-	results := make([]YoutubeSearchResult, 0)
-	for _, id := range ids {
-		result, err := youtubeDB.GetYoutubeInfo(id)
-		if err == nil {
-			results = append(results, result)
-		}
-	}
-	return results, nil
+	return parseYoutubeSearchFromURL(searchUrl+query.Encode(), youtubeDB.searchWebSiteRegex)
 }
 
-func (youtubeSearch *YoutubeSearch) getSearchFromApi(youtubeDB *YoutubeDB) ([]YoutubeSearchResult, error) {
+func (youtubeSearch *YoutubeSearch) getSearchFromApi(youtubeDB *YoutubeDB) ([]string, error) {
 	searchUrl := "https://www.googleapis.com/youtube/v3/search?"
 	query := url.Values{}
 	query.Set("q", youtubeSearch.query)
@@ -110,24 +93,12 @@ func (youtubeSearch *YoutubeSearch) getSearchFromApi(youtubeDB *YoutubeDB) ([]Yo
 	query.Set("part", "snippet")
 	query.Set("key", youtubeDB.ytKey)
 
-	ids, err := parseYoutubeSearchFromURL(searchUrl+query.Encode(), youtubeDB.searchApiRegex)
-	if err != nil {
-		return nil, err
-	}
-
-	results := make([]YoutubeSearchResult, 0)
-	for _, id := range ids {
-		result, err := youtubeDB.GetYoutubeInfo(id)
-		if err == nil {
-			results = append(results, result)
-		}
-	}
-	return results, nil
+	return parseYoutubeSearchFromURL(searchUrl+query.Encode(), youtubeDB.searchApiRegex)
 }
 
-func (youtubeSearch *YoutubeSearch) getSearchFromYoutubeDL(youtubeDL string) ([]YoutubeSearchResult, error) {
+func (youtubeSearch *YoutubeSearch) getSearchFromYoutubeDL(youtubeDL string) ([]string, error) {
 	cmd := exec.Command(youtubeDL, "-e", "--get-id", "--get-thumbnail", "--get-duration",
-		fmt.Sprintf("ytsearch5:%s", youtubeSearch.query))
+		fmt.Sprintf("ytsearch10:%s", youtubeSearch.query))
 
 	reader, err := cmd.StdoutPipe()
 	if err != nil {
@@ -139,48 +110,16 @@ func (youtubeSearch *YoutubeSearch) getSearchFromYoutubeDL(youtubeDL string) ([]
 		return nil, err
 	}
 
-	results := make([]YoutubeSearchResult, 0)
-	var result YoutubeSearchResult
+	results := make([]string, 0)
 	bufReader := bufio.NewReader(reader)
 	for i := 0; ; i++ {
 		line, err := bufReader.ReadString('\n')
 		if err != nil {
 			break
 		}
-		switch i {
-		case 0:
-			result = YoutubeSearchResult{}
-			result.Title = line
-			break
-		case 1:
-			result.Id = line
-			break
-		case 2:
-			result.Thumbnail = line
-
-			// check if medium quality exist
-			thumbnailUrl := result.Thumbnail
-			thumbnailUrl = thumbnailUrl[:strings.LastIndex(thumbnailUrl,
-				"/")] + "/default.jpg"
-
-			res, err := http.Get(thumbnailUrl)
-			if err != nil || res.StatusCode != http.StatusOK {
-				break
-			}
-			result.Thumbnail = thumbnailUrl
-			break
-		case 3:
-			result.Duration = line
-			results = append(results, result)
-			i = -1
-			break
-		}
+		results = append(results, line)
 	}
 	reader.Close()
-
-	if len(results) == 0 {
-		return nil, fmt.Errorf("no videos found")
-	}
 	return results, nil
 }
 
@@ -301,26 +240,26 @@ func getYoutubeCharts(apiKey string) ([]YoutubeSearchResult, error) {
 	return results, nil
 }
 
-func (youtubeSearch *YoutubeSearch) getResults() []YoutubeSearchResult {
+func (youtubeSearch *YoutubeSearch) getResults() []string {
 	youtubeSearch.rwLock.RLock()
 	defer youtubeSearch.rwLock.RUnlock()
 	return youtubeSearch.results
 }
 
-func (youtubeSearch *YoutubeSearch) setLastTimeFetched() {
-	youtubeSearch.lastFetchedLock.Lock()
-	defer youtubeSearch.lastFetchedLock.Unlock()
-	youtubeSearch.lastFetched = time.Now()
+func (youtubeSearch *YoutubeSearch) increaseCount() {
+	youtubeSearch.countLock.Lock()
+	defer youtubeSearch.countLock.Unlock()
+	youtubeSearch.count++
 }
 
 func (youtubeSearch YoutubeSearch) GetUniqueId() string {
 	return youtubeSearch.query
 }
 
-func (youtubeSearch YoutubeSearch) GetTime() time.Time {
-	youtubeSearch.lastFetchedLock.RLock()
-	defer youtubeSearch.lastFetchedLock.RUnlock()
-	return youtubeSearch.lastFetched
+func (youtubeSearch YoutubeSearch) GetCount() int {
+	youtubeSearch.countLock.RLock()
+	defer youtubeSearch.countLock.RUnlock()
+	return youtubeSearch.count
 }
 
 func parseYoutubeApiTime(duration string) (int, int) {
