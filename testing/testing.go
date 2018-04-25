@@ -223,8 +223,8 @@ func testDatastructures() {
 	var datas []YoutubeSong
 	for i := 0; i < 100; i++ {
 		datas = append(datas, YoutubeSong{
-			fmt.Sprintf("someid%d", i),
-			rand.Intn(1)})
+			id:fmt.Sprintf("someid%d", i),
+			count: rand.Intn(1)})
 	}
 
 	var wait sync.WaitGroup

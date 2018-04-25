@@ -75,7 +75,6 @@ func (tree *rankingTree) getLowest() rankingInterface {
 func (tree *rankingTree) getSize() int {
 	tree.lock.RLock()
 	defer tree.lock.RUnlock()
-
 	return tree.size
 }
 

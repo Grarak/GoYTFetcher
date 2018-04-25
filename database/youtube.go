@@ -125,14 +125,13 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, error) {
 		youtubeSong.googleUrlLock.Lock()
 		go func() {
 			youtubeDB.deleteCacheLock.RLock()
+			defer youtubeDB.deleteCacheLock.RUnlock()
 			youtubeSong.download(youtubeDB)
-			youtubeDB.deleteCacheLock.RUnlock()
 		}()
 		url = youtubeSong.getGoogleUrl()
 	}
 
 	if utils.StringIsEmpty(url) {
-		youtubeDB.songs.Delete(id)
 		return youtubeDB.FetchYoutubeSong(id)
 	}
 
@@ -155,7 +154,7 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, error) {
 			}
 		}
 	} else {
-		youtubeDB.songs.Delete(youtubeSong)
+		youtubeDB.songs.Delete(youtubeSong.id)
 	}
 	return url, nil
 }
@@ -189,7 +188,7 @@ func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearc
 			youtubeDB.songs.Delete(lowestSearch.GetUniqueId())
 		}
 	} else {
-		youtubeDB.searches.Delete(youtubeSearch)
+		youtubeDB.searches.Delete(youtubeSearch.query)
 	}
 
 	youtubeSearchResults := make([]YoutubeSearchResult, 0)
@@ -231,7 +230,7 @@ func (youtubeDB *YoutubeDB) GetYoutubeInfo(id string) (YoutubeSearchResult, erro
 			youtubeDB.ids.Delete(lowestId.GetUniqueId())
 		}
 	} else {
-		youtubeDB.ids.Delete(youtubeId)
+		youtubeDB.ids.Delete(youtubeId.id)
 	}
 	return result, err
 }

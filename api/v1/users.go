@@ -36,6 +36,8 @@ func usersLogin(client *miniserver.Client) *miniserver.Response {
 	userDB := database.GetDatabase().UserDB
 	user, code := userDB.GetUserWithPassword(request.Name, request.Password)
 	if code == utils.StatusNoError {
+		logger.I(user.Name + " logged in")
+
 		return client.CreateJsonResponse(user)
 	}
 

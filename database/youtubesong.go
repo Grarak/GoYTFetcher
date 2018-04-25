@@ -18,18 +18,17 @@ type YoutubeSong struct {
 	googleUrl     string
 	googleUrlLock sync.RWMutex
 
-	count     int
-	countLock sync.RWMutex
-
-	downloaded   bool
-	downloading  bool
-	downloadLock sync.RWMutex
+	count       int
+	downloaded  bool
+	downloading bool
 
 	filePath string
 	deleted  bool
 
 	encryptedId string
-	rwLock      sync.RWMutex
+
+	valuesLock sync.RWMutex
+	rwLock     sync.RWMutex
 }
 
 func newYoutubeSong(id string) *YoutubeSong {
@@ -37,26 +36,26 @@ func newYoutubeSong(id string) *YoutubeSong {
 }
 
 func (youtubeSong *YoutubeSong) isDownloaded() bool {
-	youtubeSong.downloadLock.RLock()
-	defer youtubeSong.downloadLock.RUnlock()
+	youtubeSong.valuesLock.RLock()
+	defer youtubeSong.valuesLock.RUnlock()
 	return youtubeSong.downloaded
 }
 
 func (youtubeSong *YoutubeSong) setDownloaded(downloaded bool) {
-	youtubeSong.downloadLock.Lock()
-	defer youtubeSong.downloadLock.Unlock()
+	youtubeSong.valuesLock.Lock()
+	defer youtubeSong.valuesLock.Unlock()
 	youtubeSong.downloaded = downloaded
 }
 
 func (youtubeSong *YoutubeSong) isDownloading() bool {
-	youtubeSong.downloadLock.RLock()
-	defer youtubeSong.downloadLock.RUnlock()
+	youtubeSong.valuesLock.RLock()
+	defer youtubeSong.valuesLock.RUnlock()
 	return youtubeSong.downloading
 }
 
 func (youtubeSong *YoutubeSong) setDownloading(downloading bool) {
-	youtubeSong.downloadLock.Lock()
-	defer youtubeSong.downloadLock.Unlock()
+	youtubeSong.valuesLock.Lock()
+	defer youtubeSong.valuesLock.Unlock()
 	youtubeSong.downloading = downloading
 }
 
@@ -145,8 +144,8 @@ func (youtubeSong *YoutubeSong) getEncryptedId(key []byte) string {
 }
 
 func (youtubeSong *YoutubeSong) increaseCount() {
-	youtubeSong.countLock.Lock()
-	defer youtubeSong.countLock.Unlock()
+	youtubeSong.valuesLock.Lock()
+	defer youtubeSong.valuesLock.Unlock()
 	youtubeSong.count++
 }
 
@@ -155,7 +154,5 @@ func (youtubeSong YoutubeSong) GetUniqueId() string {
 }
 
 func (youtubeSong YoutubeSong) GetCount() int {
-	youtubeSong.countLock.RLock()
-	defer youtubeSong.countLock.RUnlock()
 	return youtubeSong.count
 }

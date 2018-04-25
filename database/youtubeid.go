@@ -9,10 +9,10 @@ type YoutubeId struct {
 	id     string
 	result YoutubeSearchResult
 
-	count     int
-	countLock sync.RWMutex
+	count int
 
-	rwLock sync.RWMutex
+	valuesLock sync.RWMutex
+	rwLock     sync.RWMutex
 }
 
 func newYoutubeId(id string) *YoutubeId {
@@ -41,8 +41,8 @@ func (youtubeId *YoutubeId) getResult() YoutubeSearchResult {
 }
 
 func (youtubeId *YoutubeId) increaseCount() {
-	youtubeId.countLock.Lock()
-	defer youtubeId.countLock.Unlock()
+	youtubeId.valuesLock.Lock()
+	defer youtubeId.valuesLock.Unlock()
 	youtubeId.count++
 }
 
@@ -51,7 +51,5 @@ func (youtubeId YoutubeId) GetUniqueId() string {
 }
 
 func (youtubeId YoutubeId) GetCount() int {
-	youtubeId.countLock.RLock()
-	defer youtubeId.countLock.RUnlock()
 	return youtubeId.count
 }

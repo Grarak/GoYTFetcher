@@ -25,10 +25,10 @@ type YoutubeSearch struct {
 	query   string
 	results []string
 
-	count     int
-	countLock sync.RWMutex
+	count int
 
-	rwLock sync.RWMutex
+	valuesLock sync.RWMutex
+	rwLock     sync.RWMutex
 }
 
 type querySort []string
@@ -250,8 +250,8 @@ func (youtubeSearch *YoutubeSearch) getResults() []string {
 }
 
 func (youtubeSearch *YoutubeSearch) increaseCount() {
-	youtubeSearch.countLock.Lock()
-	defer youtubeSearch.countLock.Unlock()
+	youtubeSearch.valuesLock.Lock()
+	defer youtubeSearch.valuesLock.Unlock()
 	youtubeSearch.count++
 }
 
@@ -260,8 +260,6 @@ func (youtubeSearch YoutubeSearch) GetUniqueId() string {
 }
 
 func (youtubeSearch YoutubeSearch) GetCount() int {
-	youtubeSearch.countLock.RLock()
-	defer youtubeSearch.countLock.RUnlock()
 	return youtubeSearch.count
 }
 

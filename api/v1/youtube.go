@@ -20,6 +20,7 @@ func youtubeFetch(client *miniserver.Client) *miniserver.Response {
 	if requester, err := userDB.FindUserByApiKey(request.ApiKey);
 		err == nil && *requester.Verified {
 
+		logger.I(requester.Name + " fetching " + request.Id)
 		youtubeDB := database.GetDatabase().YoutubeDB
 		urlLink, err := youtubeDB.FetchYoutubeSong(request.Id)
 		if err != nil {
@@ -74,6 +75,8 @@ func youtubeSearch(client *miniserver.Client) *miniserver.Response {
 	userDB := database.GetDatabase().UserDB
 	if requester, err := userDB.FindUserByApiKey(request.ApiKey);
 		err == nil && *requester.Verified {
+
+		logger.I(requester.Name + " searching " + request.SearchQuery)
 		results, err := database.GetDatabase().YoutubeDB.GetYoutubeSearch(request.SearchQuery)
 		if err != nil {
 			return client.CreateResponse(utils.StatusYoutubeSearchFailure)
