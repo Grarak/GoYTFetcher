@@ -18,6 +18,9 @@ import (
 	"../logger"
 )
 
+var searchWebSiteRegex = regexp.MustCompile("href=\"/watch\\?v=([a-z_A-Z0-9\\-]{11})\"")
+var searchApiRegex = regexp.MustCompile("\"videoId\":\\s+\"([a-z_A-Z0-9\\-]{11})\"")
+
 type YoutubeSearch struct {
 	query   string
 	results []string
@@ -81,7 +84,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(youtubeDB *YoutubeDB) (
 	query := url.Values{}
 	query.Set("search_query", youtubeSearch.query)
 
-	return parseYoutubeSearchFromURL(searchUrl+query.Encode(), youtubeDB.searchWebSiteRegex)
+	return parseYoutubeSearchFromURL(searchUrl+query.Encode(), searchWebSiteRegex)
 }
 
 func (youtubeSearch *YoutubeSearch) getSearchFromApi(youtubeDB *YoutubeDB) ([]string, error) {
@@ -93,7 +96,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromApi(youtubeDB *YoutubeDB) ([]st
 	query.Set("part", "snippet")
 	query.Set("key", youtubeDB.ytKey)
 
-	return parseYoutubeSearchFromURL(searchUrl+query.Encode(), youtubeDB.searchApiRegex)
+	return parseYoutubeSearchFromURL(searchUrl+query.Encode(), searchApiRegex)
 }
 
 func (youtubeSearch *YoutubeSearch) getSearchFromYoutubeDL(youtubeDL string) ([]string, error) {
@@ -101,6 +104,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromYoutubeDL(youtubeDL string) ([]
 		fmt.Sprintf("ytsearch10:%s", youtubeSearch.query))
 
 	reader, err := cmd.StdoutPipe()
+	defer reader.Close()
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +123,6 @@ func (youtubeSearch *YoutubeSearch) getSearchFromYoutubeDL(youtubeDL string) ([]
 		}
 		results = append(results, line)
 	}
-	reader.Close()
 	return results, nil
 }
 
@@ -159,7 +162,7 @@ func parseYoutubeSearchFromURL(searchUrl string, matcher *regexp.Regexp) ([]stri
 }
 
 func (youtubeDB *YoutubeDB) getYoutubeVideoInfoFromYtdl(id string) (YoutubeSearchResult, error) {
-	info, err := youtubeDB.ytdl.GetVideoInfoFromID(id)
+	info, err := ytdl.GetVideoInfoFromID(id)
 	if err != nil {
 		logger.E(fmt.Sprintf("Couldn't get %s, %v", id, err))
 		return YoutubeSearchResult{}, err

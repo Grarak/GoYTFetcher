@@ -8,6 +8,8 @@ import (
 	"../utils"
 	"crypto/aes"
 	"../logger"
+	"../ytdl"
+	"net/url"
 )
 
 type YoutubeSong struct {
@@ -75,35 +77,35 @@ func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
 	youtubeSong.rwLock.Lock()
 	defer youtubeSong.rwLock.Unlock()
 
-	info, err := youtubeDB.ytdl.GetVideoInfoFromID(youtubeSong.id)
+	info, err := ytdl.GetVideoDownloadInfo(youtubeSong.id)
 	if err != nil {
 		defer youtubeSong.setDownloading(false)
 		defer youtubeSong.googleUrlLock.Unlock()
 		return err
 	}
 
-	var url string
-	if info.Duration.Minutes() <= 20 {
-		url, err = info.GetDownloadURL(youtubeDB.youtubeDL)
+	var link *url.URL
+	if info.VideoInfo.Duration.Minutes() <= 20 {
+		link, err = info.GetDownloadURL()
 	} else {
-		url, err = info.GetDownloadURLWorst(youtubeDB.youtubeDL)
+		link, err = info.GetDownloadURLWorst()
 	}
 	if err != nil {
 		defer youtubeSong.setDownloading(false)
 		defer youtubeSong.googleUrlLock.Unlock()
 		return err
 	}
-	youtubeSong.googleUrl = url
+	youtubeSong.googleUrl = link.String()
 	youtubeSong.googleUrlLock.Unlock()
 
-	if info.Duration.Minutes() <= 20 {
-		logger.I("Downloading " + info.Title)
-		defer logger.I("Finished downloading " + info.Title)
+	if info.VideoInfo.Duration.Minutes() <= 20 {
+		logger.I("Downloading " + info.VideoInfo.Title)
+		defer logger.I("Finished downloading " + info.VideoInfo.Title)
 
 		defer youtubeSong.setDownloading(false)
 		defer youtubeSong.setDownloaded(true)
 
-		path, err := info.Download(utils.YOUTUBE_DIR, youtubeDB.youtubeDL, youtubeDB.ffmpeg)
+		path, err := info.VideoInfo.Download(utils.YOUTUBE_DIR, youtubeDB.youtubeDL)
 		if err != nil {
 			return err
 		}
@@ -114,7 +116,7 @@ func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
 		}
 		return nil
 	}
-	logger.I(info.Title + " is too long, skipping download")
+	logger.I(info.VideoInfo.Title + " is too long, skipping download")
 	return nil
 }
 

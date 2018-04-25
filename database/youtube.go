@@ -7,11 +7,9 @@ import (
 
 	"../utils"
 	"strings"
-	"../ytdl"
 	"encoding/json"
 	"os/exec"
 	"fmt"
-	"regexp"
 )
 
 type Youtube struct {
@@ -28,20 +26,14 @@ func NewYoutube(data []byte) (Youtube, error) {
 }
 
 type YoutubeDB struct {
-	Host string
-
+	Host      string
 	randomKey []byte
 
 	ytKey     string
-	ytdl      ytdl.Ytdl
 	youtubeDL string
-	ffmpeg    string
 
 	songsRanking *rankingTree
 	songs        sync.Map
-
-	searchWebSiteRegex *regexp.Regexp
-	searchApiRegex     *regexp.Regexp
 
 	searchesRanking *rankingTree
 	searches        sync.Map
@@ -62,20 +54,11 @@ func newYoutubeDB() (*YoutubeDB, error) {
 		return nil, err
 	}
 
-	ffmpeg, err := exec.LookPath(utils.FFMPEG)
-	if err != nil {
-		return nil, err
-	}
-
 	youtubeDB := &YoutubeDB{
-		ytdl:               ytdl.NewYtdl(),
-		youtubeDL:          youtubeDL,
-		ffmpeg:             ffmpeg,
-		songsRanking:       new(rankingTree),
-		searchWebSiteRegex: regexp.MustCompile("href=\"/watch\\?v=([a-z_A-Z0-9\\-]{11})\""),
-		searchApiRegex:     regexp.MustCompile("\"videoId\":\\s+\"([a-z_A-Z0-9\\-]{11})\""),
-		searchesRanking:    new(rankingTree),
-		idRanking:          new(rankingTree),
+		youtubeDL:       youtubeDL,
+		songsRanking:    new(rankingTree),
+		searchesRanking: new(rankingTree),
+		idRanking:       new(rankingTree),
 	}
 
 	files, err := ioutil.ReadDir(utils.YOUTUBE_DIR)
@@ -138,7 +121,7 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, error) {
 		url = youtubeSong.getEncryptedId(youtubeDB.randomKey)
 	} else if youtubeSong.isDownloading() {
 		url = youtubeSong.getGoogleUrl()
-	} else {
+	} else if !loaded {
 		youtubeSong.googleUrlLock.Lock()
 		go func() {
 			youtubeDB.deleteCacheLock.RLock()

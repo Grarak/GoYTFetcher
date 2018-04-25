@@ -60,6 +60,7 @@ func ExecuteCmd(name string, arg ...string) (string, error) {
 	cmd := exec.Command(name, arg...)
 
 	reader, err := cmd.StdoutPipe()
+	defer reader.Close()
 	if err != nil {
 		return "", err
 	}
@@ -79,4 +80,14 @@ func ExecuteCmd(name string, arg ...string) (string, error) {
 func FileExists(file string) bool {
 	_, err := os.Stat(file)
 	return err == nil
+}
+
+func ReverseStringSlice(s []string) {
+	for i, j := 0, len(s)-1; i < len(s)/2; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+
+func InterfaceToString(val interface{}) string {
+	return fmt.Sprintf("%v", val)
 }
