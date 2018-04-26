@@ -18,7 +18,7 @@ import (
 )
 
 func clientHandler(client *miniserver.Client) *miniserver.Response {
-	log := client.IPAddr + ": requesting " + client.Method + " " + client.Url
+	log := client.IPAddr + ": " + client.Method + " " + client.Url
 	if ranges := client.Header.Get("Range"); !utils.StringIsEmpty(ranges) {
 		log += " " + ranges
 	}
@@ -36,6 +36,8 @@ func clientHandler(client *miniserver.Client) *miniserver.Response {
 }
 
 func main() {
+	logger.Init()
+
 	if _, err := exec.LookPath(utils.YOUTUBE_DL); err != nil {
 		logger.E(utils.YOUTUBE_DL + " is not installed!")
 		return

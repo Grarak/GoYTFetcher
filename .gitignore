@@ -10,5 +10,6 @@
 *.iml
 out
 
-files
-ytfetcher*
+/files
+/ytfetcher*
+/log
