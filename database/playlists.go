@@ -17,8 +17,20 @@ type PlaylistLink struct {
 	Id     string `json:"id"`
 }
 
+type PlaylistLinkPublic struct {
+	ApiKey   string `json:"apikey"`
+	UserName string `json:"username"`
+	Playlist string `json:"playlist"`
+}
+
 func NewPlaylist(data []byte) (PlaylistLink, error) {
 	var name PlaylistLink
+	err := json.Unmarshal(data, &name)
+	return name, err
+}
+
+func NewPlaylistPublic(data []byte) (PlaylistLinkPublic, error) {
+	var name PlaylistLinkPublic
 	err := json.Unmarshal(data, &name)
 	return name, err
 }
@@ -109,4 +121,33 @@ func (playlistsDB *PlaylistsDB) DeletePlaylistLink(playlistLink PlaylistLink) er
 		ColumnName.name, playlistLink.Name,
 		ColumnId.name, playlistLink.Id))
 	return err
+}
+
+func (playlistsDB *PlaylistsDB) ListPlaylistLinksPublic(playlistLinkPublic PlaylistLinkPublic) ([]string, error) {
+	userDB := GetDatabase().UserDB
+	playlistNamesDB := GetDatabase().PlaylistNamesDB
+	user, err := userDB.FindUserByName(playlistLinkPublic.UserName)
+	if err != nil {
+		return nil, err
+	}
+
+	publicPlaylists, err := playlistNamesDB.ListPlaylistNames(user.ApiKey, true)
+	if err != nil {
+		return nil, err
+	}
+
+	found := false
+	for _, playlist := range publicPlaylists {
+		if playlist.Name == playlistLinkPublic.Playlist {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return nil, fmt.Errorf(playlistLinkPublic.Playlist + " is not public")
+	}
+
+	return playlistsDB.ListPlaylistLinks(PlaylistName{
+		ApiKey: user.ApiKey, Name: playlistLinkPublic.Playlist,
+	})
 }

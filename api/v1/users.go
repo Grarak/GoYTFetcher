@@ -242,6 +242,25 @@ func playlistListLinks(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
+func playlistListLinksPublic(client *miniserver.Client) *miniserver.Response {
+	request, err := database.NewPlaylistPublic(client.Request)
+	if err != nil {
+		return client.CreateResponse(utils.StatusInvalid)
+	}
+
+	userDB := database.GetDatabase().UserDB
+	user, err := userDB.FindUserByApiKey(request.ApiKey)
+	if err == nil && *user.Verified {
+		playlistDB := database.GetDatabase().PlaylistsDB
+		list, err := playlistDB.ListPlaylistLinksPublic(request)
+		if err == nil {
+			return client.CreateJsonResponse(list)
+		}
+	}
+
+	return client.CreateResponse(utils.StatusInvalid)
+}
+
 func playlistAddLink(client *miniserver.Client) *miniserver.Response {
 	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
@@ -331,6 +350,8 @@ func HandleUsersV1(path string, client *miniserver.Client) *miniserver.Response 
 		return playlistSetPublic(client)
 	case "playlist/listlinks":
 		return playlistListLinks(client)
+	case "playlist/listlinkspublic":
+		return playlistListLinksPublic(client)
 	case "playlist/addlink":
 		return playlistAddLink(client)
 	case "playlist/deletelink":
