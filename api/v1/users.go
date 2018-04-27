@@ -269,6 +269,7 @@ func playlistAddLink(client *miniserver.Client) *miniserver.Response {
 
 	userDB := database.GetDatabase().UserDB
 	user, err := userDB.FindUserByApiKey(request.ApiKey)
+
 	if err == nil && *user.Verified {
 		playlistDB := database.GetDatabase().PlaylistsDB
 		err := playlistDB.AddPlaylistLink(request)

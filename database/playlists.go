@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-
 	"../utils"
 	"sync"
 )
@@ -47,7 +46,7 @@ func newPlaylistsDB(db *sql.DB, rwLock *sync.RWMutex) (*PlaylistsDB, error) {
 	cmd := newTableBuilder(TablePlaylists).
 		addForeignKey(foreignKeyApikey).
 		addForeignKey(ForeignKeyName).
-		addColumn(ColumnId).build()
+		addPrimaryKey(ColumnId).build()
 
 	_, err := db.Exec(cmd)
 	if err != nil {
@@ -83,25 +82,12 @@ func (playlistsDB *PlaylistsDB) ListPlaylistLinks(playlistName PlaylistName) ([]
 }
 
 func (playlistsDB *PlaylistsDB) AddPlaylistLink(playlistLink PlaylistLink) error {
-	playlistsDB.rwLock.Lock()
-	defer playlistsDB.rwLock.Unlock()
-
 	if utils.StringIsEmpty(playlistLink.Id) {
 		return fmt.Errorf("id is empty")
 	}
 
-	row := playlistsDB.db.QueryRow(fmt.Sprintf(
-		"SELECT 1 FROM %s WHERE %s = '%s' AND %s = '%s' AND %s = '%s'",
-		TablePlaylists,
-		ColumnApikey.name, playlistLink.ApiKey,
-		ColumnName.name, playlistLink.Name,
-		ColumnId.name, playlistLink.Id))
-
-	var exists bool
-	row.Scan(&exists)
-	if exists {
-		return fmt.Errorf("%s already exists", playlistLink.Name)
-	}
+	playlistsDB.rwLock.Lock()
+	defer playlistsDB.rwLock.Unlock()
 
 	_, err := playlistsDB.db.Exec(fmt.Sprintf(
 		"INSERT INTO %s (%s, %s, %s) VALUES (?, ?, ?)",

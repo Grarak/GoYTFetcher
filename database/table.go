@@ -1,7 +1,5 @@
 package database
 
-import "fmt"
-
 type tableBuilder struct {
 	name        string
 	primaryKeys []column
@@ -50,10 +48,21 @@ func (tableBuilder *tableBuilder) build() string {
 		cmd += column.name + " " + string(column.dataType) + ","
 	}
 
+	referenceTables := make(map[string][]foreignKey)
 	for _, foreignKey := range tableBuilder.foreignKeys {
-		cmd += fmt.Sprintf(
-			"foreign key (%s) references %s(%s),",
-			foreignKey.name, foreignKey.referenceTable, foreignKey.referenceKey)
+		referenceKeys := referenceTables[foreignKey.referenceTable]
+		referenceTables[foreignKey.referenceTable] = append(referenceKeys, foreignKey)
+	}
+	for table, keys := range referenceTables {
+		cmd += "foreign key ("
+		for _, key := range keys {
+			cmd += key.name + ","
+		}
+		cmd = cmd[:len(cmd)-1] + ") references " + table + " ("
+		for _, key := range keys {
+			cmd += key.referenceKey + ","
+		}
+		cmd = cmd[:len(cmd)-1] + "),"
 	}
 
 	var primaryKeys []string
