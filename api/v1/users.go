@@ -276,10 +276,11 @@ func playlistAddId(client *miniserver.Client) *miniserver.Response {
 	playlistsDB := database.GetDatabase().PlaylistsDB
 	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
 		err == nil && *requester.Verified {
-		err := playlistsDB.AddIdToPlaylist(request)
-		if err == nil {
-			return client.CreateResponse(utils.StatusNoError)
+		err = playlistsDB.AddIdToPlaylist(request)
+		if err != nil {
+			return client.CreateResponse(utils.StatusPlaylistIdAlreadyExists)
 		}
+		return client.CreateResponse(utils.StatusNoError)
 	}
 
 	return client.CreateResponse(utils.StatusInvalid)

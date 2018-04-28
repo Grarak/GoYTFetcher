@@ -17,6 +17,6 @@ const (
 	StatusYoutubeGetFailure       = 13
 	StatusYoutubeGetInfoFailure   = 14
 	StatusYoutubeGetChartsFailure = 15
-	StatusPlaylistAlreadyExists   = 16
+	StatusPlaylistIdAlreadyExists = 16
 	StatusAddHistoryFailed        = 17
 )
