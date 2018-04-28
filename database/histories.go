@@ -51,8 +51,8 @@ func (historiesDB *HistoriesDB) AddHistory(apiKey, id string) error {
 	}
 	for i := 50; i < len(history); i++ {
 		_, err := historiesDB.db.Exec(fmt.Sprintf(
-			"DELETE FROM %s WHERE %s = '%s' AND %s = '%s'",
-			TableHistories, ColumnApikey.name, apiKey, ColumnId.name, history[i]))
+			"DELETE FROM %s WHERE %s = ? AND %s = ?",
+			TableHistories, ColumnApikey.name, ColumnId.name), apiKey, history[i])
 		if err != nil {
 			return err
 		}
@@ -73,20 +73,26 @@ func (historiesDB *HistoriesDB) GetHistory(apiKey string) ([]string, error) {
 }
 
 func (historiesDB *HistoriesDB) getHistory(apiKey string) ([]string, error) {
-	row, err := historiesDB.db.Query(fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = '%s' "+
+	stmt, err := historiesDB.db.Prepare(fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = ? "+
 			"ORDER BY %s DESC",
-		ColumnId.name, TableHistories, ColumnApikey.name, apiKey,
+		ColumnId.name, TableHistories, ColumnApikey.name,
 		ColumnDate.name))
 	if err != nil {
 		return nil, err
 	}
-	defer row.Close()
+	defer stmt.Close()
+
+	rows, err := stmt.Query(apiKey)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
 	links := make([]string, 0)
-	for row.Next() {
+	for rows.Next() {
 		var link string
-		err = row.Scan(&link)
+		err = rows.Scan(&link)
 		if err != nil {
 			return nil, err
 		}

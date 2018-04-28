@@ -17,8 +17,8 @@ func usersSignUp(client *miniserver.Client) *miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	user, code := userDB.AddUser(request)
+	usersDB := database.GetDatabase().UsersDB
+	user, code := usersDB.AddUser(request)
 	if code == utils.StatusNoError {
 		logger.I(fmt.Sprintf("Created new user %s", user.Name))
 		return client.CreateJsonResponse(user)
@@ -33,8 +33,8 @@ func usersLogin(client *miniserver.Client) *miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	user, code := userDB.GetUserWithPassword(request.Name, request.Password)
+	usersDB := database.GetDatabase().UsersDB
+	user, code := usersDB.GetUserWithPassword(request.Name, request.Password)
 	if code == utils.StatusNoError {
 		logger.I(user.Name + " logged in")
 
@@ -50,14 +50,14 @@ func usersList(client *miniserver.Client) *miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	if user, err := userDB.FindUserByApiKey(request.ApiKey);
+	usersDB := database.GetDatabase().UsersDB
+	if user, err := usersDB.FindUserByApiKey(request.ApiKey);
 		err == nil && *user.Verified {
 		page, err := strconv.Atoi(client.Queries.Get("page"))
 		if err != nil {
 			page = 1
 		}
-		users, err := userDB.ListUsers(page)
+		users, err := usersDB.ListUsers(page)
 		if err == nil {
 			return client.CreateJsonResponse(users)
 		}
@@ -72,10 +72,10 @@ func usersSetVerification(client *miniserver.Client) *miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	if requester, err := userDB.FindUserByApiKey(request.ApiKey);
+	usersDB := database.GetDatabase().UsersDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
 		err == nil && *requester.Admin {
-		err = userDB.SetVerificationUser(request)
+		err = usersDB.SetVerificationUser(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
 		}
@@ -90,10 +90,10 @@ func usersDelete(client *miniserver.Client) *miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	if requester, err := userDB.FindUserByApiKey(request.ApiKey);
+	usersDB := database.GetDatabase().UsersDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
 		err == nil && *requester.Admin {
-		err = userDB.DeleteUser(request)
+		err = usersDB.DeleteUser(request)
 		if err != nil {
 			return client.CreateResponse(utils.StatusNoError)
 		}
@@ -108,10 +108,10 @@ func usersDeleteAll(client *miniserver.Client) *miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	if requester, err := userDB.FindUserByApiKey(request.ApiKey);
+	usersDB := database.GetDatabase().UsersDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
 		err == nil && *requester.Admin {
-		err = userDB.DeleteAllNonVerifiedUsers(request)
+		err = usersDB.DeleteAllNonVerifiedUsers(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
 		}
@@ -126,10 +126,10 @@ func usersResetPassword(client *miniserver.Client) *miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	if requester, err := userDB.FindUserByApiKey(request.ApiKey);
+	usersDB := database.GetDatabase().UsersDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
 		err == nil && *requester.Admin {
-		err = userDB.ResetPasswordUser(request)
+		err = usersDB.ResetPasswordUser(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
 		}
@@ -139,34 +139,37 @@ func usersResetPassword(client *miniserver.Client) *miniserver.Response {
 }
 
 func playlistList(client *miniserver.Client) *miniserver.Response {
-	request, err := database.NewPlayListName(client.Request)
+	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	playlistNamesDB := database.GetDatabase().PlaylistNamesDB
-	list, err := playlistNamesDB.ListPlaylistNames(request.ApiKey, false)
+	playlistsDB := database.GetDatabase().PlaylistsDB
+	playlists, err := playlistsDB.GetPlaylists(request.ApiKey, false)
 	if err == nil {
-		return client.CreateJsonResponse(list)
+		return client.CreateJsonResponse(playlists)
 	}
 
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
 func playlistListPublic(client *miniserver.Client) *miniserver.Response {
-	request, err := database.NewPlayListName(client.Request)
+	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	requester, err := userDB.FindUserByApiKey(request.ApiKey)
-	if err == nil && *requester.Verified {
-		user, err := userDB.FindUserByName(request.Name)
-		playlistNamesDB := database.GetDatabase().PlaylistNamesDB
-		list, err := playlistNamesDB.ListPlaylistNames(user.ApiKey, true)
+	usersDB := database.GetDatabase().UsersDB
+	playlistsDB := database.GetDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
+		err == nil && *requester.Verified {
+
+		user, err := usersDB.FindUserByName(request.Name)
 		if err == nil {
-			return client.CreateJsonResponse(list)
+			playlists, err := playlistsDB.GetPlaylists(user.ApiKey, true)
+			if err == nil {
+				return client.CreateJsonResponse(playlists)
+			}
 		}
 	}
 
@@ -174,52 +177,33 @@ func playlistListPublic(client *miniserver.Client) *miniserver.Response {
 }
 
 func playlistCreate(client *miniserver.Client) *miniserver.Response {
-	request, err := database.NewPlayListName(client.Request)
+	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	user, err := userDB.FindUserByApiKey(request.ApiKey)
-	if err == nil && *user.Verified {
-		playlistNamesDB := database.GetDatabase().PlaylistNamesDB
-		err := playlistNamesDB.CreatePlaylistName(request)
-		if err != nil {
-			return client.CreateResponse(utils.StatusPlaylistAlreadyExists)
+	usersDB := database.GetDatabase().UsersDB
+	playlistsDB := database.GetDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
+		err == nil && *requester.Verified {
+
+		err := playlistsDB.CreatePlaylist(request)
+		if err == nil {
+			return client.CreateResponse(utils.StatusNoError)
 		}
-		return client.CreateResponse(utils.StatusNoError)
 	}
 
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
 func playlistDelete(client *miniserver.Client) *miniserver.Response {
-	request, err := database.NewPlayListName(client.Request)
+	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	user, err := userDB.FindUserByApiKey(request.ApiKey)
-	if err == nil && *user.Verified {
-		playlistNamesDB := database.GetDatabase().PlaylistNamesDB
-		err := playlistNamesDB.DeletePlaylistName(request)
-		if err == nil {
-			return client.CreateResponse(utils.StatusNoError)
-		}
-	}
-
-	return client.CreateResponse(utils.StatusInvalid)
-}
-
-func playlistSetPublic(client *miniserver.Client) *miniserver.Response {
-	request, err := database.NewPlayListName(client.Request)
-	if err != nil {
-		return client.CreateResponse(utils.StatusInvalid)
-	}
-
-	playlistNamesDB := database.GetDatabase().PlaylistNamesDB
-	err = playlistNamesDB.SetPlaylistNamePublic(request)
+	playlistsDB := database.GetDatabase().PlaylistsDB
+	err = playlistsDB.DeletePlaylist(request)
 	if err == nil {
 		return client.CreateResponse(utils.StatusNoError)
 	}
@@ -227,52 +211,72 @@ func playlistSetPublic(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistListLinks(client *miniserver.Client) *miniserver.Response {
-	request, err := database.NewPlayListName(client.Request)
+func playlistSetPublic(client *miniserver.Client) *miniserver.Response {
+	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
 	playlistsDB := database.GetDatabase().PlaylistsDB
-	list, err := playlistsDB.ListPlaylistLinks(request)
+	err = playlistsDB.SetPublic(request)
 	if err == nil {
-		return client.CreateJsonResponse(list)
+		return client.CreateResponse(utils.StatusNoError)
 	}
 
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistListLinksPublic(client *miniserver.Client) *miniserver.Response {
+func playlistListIds(client *miniserver.Client) *miniserver.Response {
+	request, err := database.NewPlaylist(client.Request)
+	if err != nil {
+		return client.CreateResponse(utils.StatusInvalid)
+	}
+
+	playlistsDB := database.GetDatabase().PlaylistsDB
+	ids, err := playlistsDB.GetPlaylistIds(request)
+	if err == nil {
+		return client.CreateJsonResponse(ids)
+	}
+
+	return client.CreateResponse(utils.StatusInvalid)
+}
+
+func playlistListIdsPublic(client *miniserver.Client) *miniserver.Response {
 	request, err := database.NewPlaylistPublic(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	user, err := userDB.FindUserByApiKey(request.ApiKey)
-	if err == nil && *user.Verified {
-		playlistDB := database.GetDatabase().PlaylistsDB
-		list, err := playlistDB.ListPlaylistLinksPublic(request)
+	usersDB := database.GetDatabase().UsersDB
+	playlistsDB := database.GetDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
+		err == nil && *requester.Verified {
+		user, err := usersDB.FindUserByName(request.UserName)
 		if err == nil {
-			return client.CreateJsonResponse(list)
+			playlist := database.Playlist{ApiKey: user.ApiKey, Name: request.Playlist}
+			if playlistsDB.IsPlaylistPublic(playlist) {
+				ids, err := playlistsDB.GetPlaylistIds(playlist)
+				if err == nil {
+					return client.CreateJsonResponse(ids)
+				}
+			}
 		}
 	}
 
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistAddLink(client *miniserver.Client) *miniserver.Response {
-	request, err := database.NewPlaylist(client.Request)
+func playlistAddId(client *miniserver.Client) *miniserver.Response {
+	request, err := database.NewPlaylistId(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	user, err := userDB.FindUserByApiKey(request.ApiKey)
-
-	if err == nil && *user.Verified {
-		playlistDB := database.GetDatabase().PlaylistsDB
-		err := playlistDB.AddPlaylistLink(request)
+	usersDB := database.GetDatabase().UsersDB
+	playlistsDB := database.GetDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
+		err == nil && *requester.Verified {
+		err := playlistsDB.AddIdToPlaylist(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
 		}
@@ -281,17 +285,36 @@ func playlistAddLink(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistDeleteLink(client *miniserver.Client) *miniserver.Response {
-	request, err := database.NewPlaylist(client.Request)
+func playlistDeleteId(client *miniserver.Client) *miniserver.Response {
+	request, err := database.NewPlaylistId(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UserDB
-	user, err := userDB.FindUserByApiKey(request.ApiKey)
-	if err == nil && *user.Verified {
-		playlistDB := database.GetDatabase().PlaylistsDB
-		err := playlistDB.DeletePlaylistLink(request)
+	usersDB := database.GetDatabase().UsersDB
+	playlistsDB := database.GetDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
+		err == nil && *requester.Verified {
+		err := playlistsDB.DeleteIdFromPlaylist(request)
+		if err == nil {
+			return client.CreateResponse(utils.StatusNoError)
+		}
+	}
+
+	return client.CreateResponse(utils.StatusInvalid)
+}
+
+func playlistSetIds(client *miniserver.Client) *miniserver.Response {
+	request, err := database.NewPlaylistIds(client.Request)
+	if err != nil {
+		return client.CreateResponse(utils.StatusInvalid)
+	}
+
+	usersDB := database.GetDatabase().UsersDB
+	playlistsDB := database.GetDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
+		err == nil && *requester.Verified {
+		err := playlistsDB.SetPlaylistIds(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
 		}
@@ -349,14 +372,16 @@ func HandleUsersV1(path string, client *miniserver.Client) *miniserver.Response 
 		return playlistDelete(client)
 	case "playlist/setpublic":
 		return playlistSetPublic(client)
-	case "playlist/listlinks":
-		return playlistListLinks(client)
-	case "playlist/listlinkspublic":
-		return playlistListLinksPublic(client)
-	case "playlist/addlink":
-		return playlistAddLink(client)
-	case "playlist/deletelink":
-		return playlistDeleteLink(client)
+	case "playlist/listids":
+		return playlistListIds(client)
+	case "playlist/listidspublic":
+		return playlistListIdsPublic(client)
+	case "playlist/addid":
+		return playlistAddId(client)
+	case "playlist/deleteid":
+		return playlistDeleteId(client)
+	case "playlist/setids":
+		return playlistSetIds(client)
 
 		// history database
 	case "history/list":

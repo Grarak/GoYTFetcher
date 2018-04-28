@@ -64,17 +64,17 @@ func generatePassword(password []byte) (string, string) {
 	return utils.ToURLBase64(hash), utils.ToURLBase64(salt)
 }
 
-type UserDB struct {
+type UsersDB struct {
 	db     *sql.DB
 	rwLock *sync.RWMutex
 
 	namePattern *regexp.Regexp
 }
 
-func newUserDB(db *sql.DB, rwLock *sync.RWMutex) (*UserDB, error) {
+func newUsersDB(db *sql.DB, rwLock *sync.RWMutex) (*UsersDB, error) {
 	cmd := newTableBuilder(TableUsers).
-		addUniqueKey(ColumnApikey).
-		addUniqueKey(ColumnName).
+		addUniqueKeyPair(ColumnApikey).
+		addUniqueKeyPair(ColumnName).
 		addColumn(ColumnPasswordSalt).
 		addColumn(ColumnPasswordHash).
 		addColumn(ColumnAdmin).
@@ -90,10 +90,10 @@ func newUserDB(db *sql.DB, rwLock *sync.RWMutex) (*UserDB, error) {
 		return nil, err
 	}
 
-	return &UserDB{db, rwLock, regex}, nil
+	return &UsersDB{db, rwLock, regex}, nil
 }
 
-func (userDB *UserDB) AddUser(user User) (User, int) {
+func (usersDB *UsersDB) AddUser(user User) (User, int) {
 	if len(user.Name) <= 3 {
 		return user, utils.StatusNameShort
 	}
@@ -102,7 +102,7 @@ func (userDB *UserDB) AddUser(user User) (User, int) {
 		return user, utils.StatusNameLong
 	}
 
-	if !userDB.namePattern.MatchString(user.Name) {
+	if !usersDB.namePattern.MatchString(user.Name) {
 		return user, utils.StatusNameInvalid
 	}
 
@@ -119,10 +119,10 @@ func (userDB *UserDB) AddUser(user User) (User, int) {
 		return user, utils.StatusPasswordLong
 	}
 
-	userDB.rwLock.Lock()
-	defer userDB.rwLock.Unlock()
+	usersDB.rwLock.Lock()
+	defer usersDB.rwLock.Unlock()
 
-	if _, err := userDB.findUserByName(user.Name); err == nil {
+	if _, err := usersDB.findUserByName(user.Name); err == nil {
 		return user, utils.StatusUserAlreadyExists
 	}
 
@@ -130,13 +130,13 @@ func (userDB *UserDB) AddUser(user User) (User, int) {
 	hash, salt := generatePassword(password)
 
 	// Generate api token
-	user.ApiKey = userDB.generateApiToken()
+	user.ApiKey = usersDB.generateApiToken()
 
 	user.Password = ""
 
 	// If this is the first user
 	// Make him admin
-	count, _ := rowCountInTable(userDB.db, TableUsers)
+	count, _ := rowCountInTable(usersDB.db, TableUsers)
 	var admin bool
 	var verified bool
 	if count == 0 {
@@ -146,7 +146,7 @@ func (userDB *UserDB) AddUser(user User) (User, int) {
 	user.Admin = &admin
 	user.Verified = &verified
 
-	_, err = userDB.db.Exec(fmt.Sprintf(
+	_, err = usersDB.db.Exec(fmt.Sprintf(
 
 		"INSERT INTO %s "+
 			"(%s, %s, %s, %s, %s, %s) "+
@@ -165,8 +165,8 @@ func (userDB *UserDB) AddUser(user User) (User, int) {
 	return user, utils.StatusNoError
 }
 
-func (userDB *UserDB) GetUserWithPassword(name, password string) (User, int) {
-	user, err := userDB.FindUserByName(name)
+func (usersDB *UsersDB) GetUserWithPassword(name, password string) (User, int) {
+	user, err := usersDB.FindUserByName(name)
 	if err == nil {
 		password, err := utils.Decode(password)
 		if err == nil {
@@ -185,52 +185,52 @@ func (userDB *UserDB) GetUserWithPassword(name, password string) (User, int) {
 	return User{}, utils.StatusInvalidPassword
 }
 
-func (userDB *UserDB) generateApiToken() string {
+func (usersDB *UsersDB) generateApiToken() string {
 	token := utils.ToURLBase64(utils.GenerateRandom(32))
-	if _, err := userDB.findUserByApiKey(token); err == nil {
-		return userDB.generateApiToken()
+	if _, err := usersDB.findUserByApiKey(token); err == nil {
+		return usersDB.generateApiToken()
 	}
 	return token
 }
 
-func (userDB *UserDB) FindUserByApiKey(apiKey string) (User, error) {
-	userDB.rwLock.RLock()
-	defer userDB.rwLock.RUnlock()
-	return userDB.findUserByApiKey(apiKey)
+func (usersDB *UsersDB) FindUserByApiKey(apiKey string) (User, error) {
+	usersDB.rwLock.RLock()
+	defer usersDB.rwLock.RUnlock()
+	return usersDB.findUserByApiKey(apiKey)
 }
 
-func (userDB *UserDB) findUserByApiKey(apiKey string) (User, error) {
-	users, err := userDB.createUserWithWhere(
-		ColumnApikey.name + " = " + "'" + apiKey + "'")
+func (usersDB *UsersDB) findUserByApiKey(apiKey string) (User, error) {
+	users, err := usersDB.createUserWithWhere(
+		ColumnApikey.name+" = ?", apiKey)
 	if len(users) > 0 {
 		return users[0], err
 	}
 	return User{}, fmt.Errorf("no users found")
 }
 
-func (userDB *UserDB) FindUserByName(name string) (User, error) {
-	userDB.rwLock.RLock()
-	defer userDB.rwLock.RUnlock()
-	return userDB.findUserByName(name)
+func (usersDB *UsersDB) FindUserByName(name string) (User, error) {
+	usersDB.rwLock.RLock()
+	defer usersDB.rwLock.RUnlock()
+	return usersDB.findUserByName(name)
 }
 
-func (userDB *UserDB) findUserByName(name string) (User, error) {
-	users, err := userDB.createUserWithWhere(
-		ColumnName.name + " = " + "'" + name + "' COLLATE NOCASE")
+func (usersDB *UsersDB) findUserByName(name string) (User, error) {
+	users, err := usersDB.createUserWithWhere(
+		ColumnName.name+" = ? COLLATE NOCASE", name)
 	if len(users) > 0 {
 		return users[0], err
 	}
 	return User{}, fmt.Errorf("no users found")
 }
 
-func (userDB *UserDB) ListUsers(page int) ([]User, error) {
-	userDB.rwLock.RLock()
-	defer userDB.rwLock.RUnlock()
+func (usersDB *UsersDB) ListUsers(page int) ([]User, error) {
+	usersDB.rwLock.RLock()
+	defer usersDB.rwLock.RUnlock()
 
 	if page < 1 {
 		page = 1
 	}
-	users, err := userDB.createUsers(fmt.Sprintf(
+	users, err := usersDB.createUsers(fmt.Sprintf(
 		"LIMIT 10 OFFSET %d", 10*(page-1)))
 	if err != nil {
 		return nil, err
@@ -244,43 +244,39 @@ func (userDB *UserDB) ListUsers(page int) ([]User, error) {
 	return usersNoApiKey, nil
 }
 
-func (userDB *UserDB) SetVerificationUser(request User) error {
-	userDB.rwLock.Lock()
-	defer userDB.rwLock.Unlock()
+func (usersDB *UsersDB) SetVerificationUser(request User) error {
+	usersDB.rwLock.Lock()
+	defer usersDB.rwLock.Unlock()
 
-	var verified int
-	if *request.Verified {
-		verified = 1
-	}
-	_, err := userDB.db.Exec(fmt.Sprintf(
-		"UPDATE %s SET %s = %d WHERE %s = '%s'",
-		TableUsers, ColumnVerified.name, verified, ColumnName.name, request.Name))
+	_, err := usersDB.db.Exec(fmt.Sprintf(
+		"UPDATE %s SET %s = ? WHERE %s = ?",
+		TableUsers, ColumnVerified.name, ColumnName.name), *request.Verified, request.Name)
 	return err
 }
 
-func (userDB *UserDB) DeleteUser(request User) error {
-	userDB.rwLock.Lock()
-	defer userDB.rwLock.Unlock()
+func (usersDB *UsersDB) DeleteUser(request User) error {
+	usersDB.rwLock.Lock()
+	defer usersDB.rwLock.Unlock()
 
-	_, err := userDB.db.Exec(fmt.Sprintf(
-		"DELETE FROM %s WHERE %s = '%s'",
-		TableUsers, ColumnName.name, request.Name))
+	_, err := usersDB.db.Exec(fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = ?",
+		TableUsers, ColumnName.name), request.Name)
 	return err
 }
 
-func (userDB *UserDB) DeleteAllNonVerifiedUsers(request User) error {
-	userDB.rwLock.Lock()
-	defer userDB.rwLock.Unlock()
+func (usersDB *UsersDB) DeleteAllNonVerifiedUsers(request User) error {
+	usersDB.rwLock.Lock()
+	defer usersDB.rwLock.Unlock()
 
-	_, err := userDB.db.Exec(fmt.Sprintf(
+	_, err := usersDB.db.Exec(fmt.Sprintf(
 		"DELETE FROM %s WHERE %s = %d OR %s = null",
 		TableUsers, ColumnVerified.name, 0, ColumnVerified.name))
 	return err
 }
 
-func (userDB *UserDB) ResetPasswordUser(request User) error {
-	userDB.rwLock.Lock()
-	defer userDB.rwLock.Unlock()
+func (usersDB *UsersDB) ResetPasswordUser(request User) error {
+	usersDB.rwLock.Lock()
+	defer usersDB.rwLock.Unlock()
 
 	password, err := utils.Decode(request.Password)
 	if len(password) <= 4 {
@@ -291,39 +287,41 @@ func (userDB *UserDB) ResetPasswordUser(request User) error {
 		return err
 	}
 	hash, salt := generatePassword(password)
-	_, err = userDB.db.Exec(fmt.Sprintf(
-		"UPDATE %s SET %s = '%s', %s = '%s' WHERE %s = '%s'",
-		TableUsers, ColumnPasswordHash.name, hash,
-		ColumnPasswordSalt.name, salt,
-		ColumnName.name, request.Name))
+	_, err = usersDB.db.Exec(fmt.Sprintf(
+		"UPDATE %s SET %s = ?, %s = ? WHERE %s = ?",
+		TableUsers, ColumnPasswordHash.name,
+		ColumnPasswordSalt.name,
+		ColumnName.name), hash, salt, salt)
 	return err
 }
 
-func (userDB *UserDB) createUserWithWhere(where string) ([]User, error) {
-	return userDB.createUsers("WHERE " + where)
+func (usersDB *UsersDB) createUserWithWhere(where string, args ...interface{}) ([]User, error) {
+	return usersDB.createUsers("WHERE "+where, args...)
 }
 
-func (userDB *UserDB) createUsers(condition string) ([]User, error) {
-	cmd := fmt.Sprintf(
+func (usersDB *UsersDB) createUsers(condition string, args ...interface{}) ([]User, error) {
+	stmt, err := usersDB.db.Prepare(fmt.Sprintf(
 		"SELECT %s,%s,%s,%s,%s,%s FROM %s %s",
 		ColumnApikey.name, ColumnName.name, ColumnPasswordSalt.name,
 		ColumnPasswordHash.name, ColumnAdmin.name,
-		ColumnVerified.name,
-
-		TableUsers, condition)
-
-	row, err := userDB.db.Query(cmd)
+		ColumnVerified.name, TableUsers, condition))
 	if err != nil {
 		return nil, err
 	}
-	defer row.Close()
+	defer stmt.Close()
+
+	rows, err := stmt.Query(args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
 
 	var users []User
-	for row.Next() {
+	for rows.Next() {
 		admin := false
 		verified := false
 		user := User{Admin: &admin, Verified: &verified}
-		err := row.Scan(&user.ApiKey, &user.Name, &user.PasswordSalt,
+		err := rows.Scan(&user.ApiKey, &user.Name, &user.PasswordSalt,
 			&user.PasswordHash, user.Admin, user.Verified)
 		if err != nil {
 			return nil, err

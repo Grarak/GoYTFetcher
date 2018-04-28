@@ -1,11 +1,13 @@
 package database
 
+import "strings"
+
 type tableBuilder struct {
-	name        string
-	primaryKeys []column
-	uniqueKeys  []column
-	foreignKeys []foreignKey
-	columns     []column
+	name            string
+	primaryKeys     []column
+	uniqueKeysPairs [][]column
+	foreignKeys     []foreignKey
+	columns         []column
 }
 
 func newTableBuilder(name string) *tableBuilder {
@@ -17,8 +19,8 @@ func (tableBuilder *tableBuilder) addPrimaryKey(key column) *tableBuilder {
 	return tableBuilder
 }
 
-func (tableBuilder *tableBuilder) addUniqueKey(key column) *tableBuilder {
-	tableBuilder.uniqueKeys = append(tableBuilder.uniqueKeys, key)
+func (tableBuilder *tableBuilder) addUniqueKeyPair(key ...column) *tableBuilder {
+	tableBuilder.uniqueKeysPairs = append(tableBuilder.uniqueKeysPairs, key)
 	return tableBuilder
 }
 
@@ -39,13 +41,24 @@ func (tableBuilder *tableBuilder) build() string {
 		cmd += foreignKey.name + " " + string(foreignKey.dataType) + " NOT NULL,"
 	}
 	for _, primaryKey := range tableBuilder.primaryKeys {
-		cmd += primaryKey.name + " " + string(primaryKey.dataType) + " NOT NULL,"
+		line := primaryKey.name + " " + string(primaryKey.dataType)
+		if !strings.Contains(cmd, line) {
+			cmd += line + " NOT NULL,"
+		}
 	}
-	for _, uniqueKey := range tableBuilder.uniqueKeys {
-		cmd += uniqueKey.name + " " + string(uniqueKey.dataType) + " UNIQUE,"
+	for _, uniqueKeyPair := range tableBuilder.uniqueKeysPairs {
+		for _, uniqueKey := range uniqueKeyPair {
+			line := uniqueKey.name + " " + string(uniqueKey.dataType)
+			if !strings.Contains(cmd, line) {
+				cmd += line + ","
+			}
+		}
 	}
 	for _, column := range tableBuilder.columns {
-		cmd += column.name + " " + string(column.dataType) + ","
+		line := column.name + " " + string(column.dataType)
+		if !strings.Contains(cmd, line) {
+			cmd += line + ","
+		}
 	}
 
 	referenceTables := make(map[string][]foreignKey)
@@ -54,15 +67,15 @@ func (tableBuilder *tableBuilder) build() string {
 		referenceTables[foreignKey.referenceTable] = append(referenceKeys, foreignKey)
 	}
 	for table, keys := range referenceTables {
-		cmd += "foreign key ("
+		cmd += "FOREIGN KEY ("
 		for _, key := range keys {
 			cmd += key.name + ","
 		}
-		cmd = cmd[:len(cmd)-1] + ") references " + table + " ("
+		cmd = cmd[:len(cmd)-1] + ") REFERENCES " + table + " ("
 		for _, key := range keys {
 			cmd += key.referenceKey + ","
 		}
-		cmd = cmd[:len(cmd)-1] + "),"
+		cmd = cmd[:len(cmd)-1] + ") ON UPDATE CASCADE,"
 	}
 
 	var primaryKeys []string
@@ -75,12 +88,21 @@ func (tableBuilder *tableBuilder) build() string {
 		}
 	}
 	if len(primaryKeys) > 0 {
-		cmd += "primary key ("
+		cmd += "PRIMARY KEY ("
 		for _, key := range primaryKeys {
 			cmd += key + ","
 		}
 		cmd = cmd[:len(cmd)-1] + "),"
 	}
+
+	for _, uniqueKeyPair := range tableBuilder.uniqueKeysPairs {
+		cmd += "UNIQUE ("
+		for _, uniqueKey := range uniqueKeyPair {
+			cmd += uniqueKey.name + ","
+		}
+		cmd = cmd[:len(cmd)-1] + "),"
+	}
+
 	cmd = cmd[:len(cmd)-1] + ")"
 	return cmd
 }

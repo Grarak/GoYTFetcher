@@ -13,10 +13,9 @@ var databaseInstance *Database
 type Database struct {
 	db *sql.DB
 
-	UserDB          *UserDB
-	PlaylistNamesDB *PlaylistNamesDB
-	PlaylistsDB     *PlaylistsDB
-	HistoriesDB     *HistoriesDB
+	UsersDB     *UsersDB
+	PlaylistsDB *PlaylistsDB
+	HistoriesDB *HistoriesDB
 
 	YoutubeDB *YoutubeDB
 }
@@ -37,10 +36,7 @@ func GetDatabase() *Database {
 
 	rwLock := &sync.RWMutex{}
 
-	userDB, err := newUserDB(db, rwLock)
-	utils.Panic(err)
-
-	playlistNamesDB, err := newPlaylistNamesDB(db, rwLock)
+	usersDB, err := newUsersDB(db, rwLock)
 	utils.Panic(err)
 
 	playlistsDB, err := newPlaylistsDB(db, rwLock)
@@ -54,8 +50,7 @@ func GetDatabase() *Database {
 
 	databaseInstance = &Database{
 		db,
-		userDB,
-		playlistNamesDB,
+		usersDB,
 		playlistsDB,
 		historiesDB,
 		youtubeDB,

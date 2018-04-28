@@ -35,9 +35,8 @@ var ColumnAdmin = column{"admin", boolean()}
 var ColumnVerified = column{"verified", boolean()}
 var ColumnPublic = column{"public", boolean()}
 var ColumnId = column{"id", text()}
+var ColumnIds = column{"ids", text()}
 var ColumnDate = column{"date", datetime()}
 
 var ForeignKeyApikey = foreignKey{ColumnApikey.name, text(), TableUsers,
 	ColumnApikey.name, true}
-var ForeignKeyName = foreignKey{ColumnName.name, text(), TablePlaylistNames,
-	ColumnName.name, true}

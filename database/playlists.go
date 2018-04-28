@@ -4,26 +4,51 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"../utils"
 	"sync"
+	"strings"
+	"../utils"
 )
 
 const TablePlaylists = "playlists"
 
-type PlaylistLink struct {
-	ApiKey string `json:"apikey"`
+type Playlist struct {
+	ApiKey string `json:"apikey,omitempty"`
+	Name   string `json:"name"`
+	Public bool   `json:"public"`
+}
+
+type PlaylistId struct {
+	ApiKey string `json:"apikey,omitempty"`
 	Name   string `json:"name"`
 	Id     string `json:"id"`
 }
 
+type PlaylistIds struct {
+	ApiKey string   `json:"apikey,omitempty"`
+	Name   string   `json:"name"`
+	Ids    []string `json:"ids"`
+}
+
 type PlaylistLinkPublic struct {
-	ApiKey   string `json:"apikey"`
+	ApiKey   string `json:"apikey,omitempty"`
 	UserName string `json:"username"`
 	Playlist string `json:"playlist"`
 }
 
-func NewPlaylist(data []byte) (PlaylistLink, error) {
-	var name PlaylistLink
+func NewPlaylist(data []byte) (Playlist, error) {
+	var name Playlist
+	err := json.Unmarshal(data, &name)
+	return name, err
+}
+
+func NewPlaylistId(data []byte) (PlaylistId, error) {
+	var name PlaylistId
+	err := json.Unmarshal(data, &name)
+	return name, err
+}
+
+func NewPlaylistIds(data []byte) (PlaylistIds, error) {
+	var name PlaylistIds
 	err := json.Unmarshal(data, &name)
 	return name, err
 }
@@ -40,13 +65,11 @@ type PlaylistsDB struct {
 }
 
 func newPlaylistsDB(db *sql.DB, rwLock *sync.RWMutex) (*PlaylistsDB, error) {
-	foreignKeyApikey := ForeignKeyApikey
-	foreignKeyApikey.referenceTable = TablePlaylistNames
-
 	cmd := newTableBuilder(TablePlaylists).
-		addForeignKey(foreignKeyApikey).
-		addForeignKey(ForeignKeyName).
-		addPrimaryKey(ColumnId).build()
+		addForeignKey(ForeignKeyApikey).
+		addPrimaryKey(ColumnName).
+		addColumn(ColumnPublic).
+		addColumn(ColumnIds).build()
 
 	_, err := db.Exec(cmd)
 	if err != nil {
@@ -56,84 +79,181 @@ func newPlaylistsDB(db *sql.DB, rwLock *sync.RWMutex) (*PlaylistsDB, error) {
 	return &PlaylistsDB{db, rwLock}, nil
 }
 
-func (playlistsDB *PlaylistsDB) ListPlaylistLinks(playlistName PlaylistName) ([]string, error) {
+func (playlistsDB *PlaylistsDB) GetPlaylists(apiKey string, publicOnly bool) ([]Playlist, error) {
 	playlistsDB.rwLock.RLock()
 	defer playlistsDB.rwLock.RUnlock()
 
-	row, err := playlistsDB.db.Query(fmt.Sprintf(
-		"SELECT %s FROM %s WHERE %s = '%s' AND %s = '%s",
-		ColumnId.name, TablePlaylists, ColumnApikey.name, playlistName.ApiKey,
-		ColumnName.name, playlistName.Name))
+	cmd := fmt.Sprintf(
+		"SELECT %s,%s FROM %s WHERE %s = ?",
+		ColumnName.name, ColumnPublic.name, TablePlaylists,
+		ColumnApikey.name)
+	if publicOnly {
+		cmd += fmt.Sprintf(" AND %s = 1", ColumnPublic.name)
+	}
+
+	stmt, err := playlistsDB.db.Prepare(cmd)
 	if err != nil {
 		return nil, err
 	}
-	defer row.Close()
+	defer stmt.Close()
 
-	links := make([]string, 0)
-	for row.Next() {
-		var link string
-		err := row.Scan(&link)
+	rows, err := stmt.Query(apiKey)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	playlists := make([]Playlist, 0)
+	for rows.Next() {
+		var name string
+		var public bool
+		err := rows.Scan(&name, &public)
 		if err != nil {
 			return nil, err
 		}
-		links = append(links, link)
+
+		playlists = append(playlists, Playlist{Name: name, Public: public})
 	}
-	return links, nil
+
+	return playlists, nil
 }
 
-func (playlistsDB *PlaylistsDB) AddPlaylistLink(playlistLink PlaylistLink) error {
-	if utils.StringIsEmpty(playlistLink.Id) {
-		return fmt.Errorf("id is empty")
-	}
-
+func (playlistsDB *PlaylistsDB) CreatePlaylist(playlist Playlist) error {
 	playlistsDB.rwLock.Lock()
 	defer playlistsDB.rwLock.Unlock()
 
 	_, err := playlistsDB.db.Exec(fmt.Sprintf(
-		"INSERT INTO %s (%s, %s, %s) VALUES (?, ?, ?)",
-		TablePlaylists, ColumnApikey.name, ColumnName.name, ColumnId.name),
-		playlistLink.ApiKey, playlistLink.Name, playlistLink.Id)
-	return err
-}
-
-func (playlistsDB *PlaylistsDB) DeletePlaylistLink(playlistLink PlaylistLink) error {
-	playlistsDB.rwLock.Lock()
-	defer playlistsDB.rwLock.Unlock()
-
-	_, err := playlistsDB.db.Exec(fmt.Sprintf(
-		"DELETE FROM %s WHERE %s = '%s' AND %s = '%s' AND %s = '%s'",
+		"INSERT INTO %s (%s,%s,%s,%s) VALUES (?,?,?,?)",
 		TablePlaylists,
-		ColumnApikey.name, playlistLink.ApiKey,
-		ColumnName.name, playlistLink.Name,
-		ColumnId.name, playlistLink.Id))
+		ColumnApikey.name, ColumnName.name, ColumnPublic.name, ColumnIds.name),
+		playlist.ApiKey, playlist.Name, playlist.Public, "")
 	return err
 }
 
-func (playlistsDB *PlaylistsDB) ListPlaylistLinksPublic(playlistLinkPublic PlaylistLinkPublic) ([]string, error) {
-	userDB := GetDatabase().UserDB
-	playlistNamesDB := GetDatabase().PlaylistNamesDB
-	user, err := userDB.FindUserByName(playlistLinkPublic.UserName)
+func (playlistsDB *PlaylistsDB) DeletePlaylist(playlist Playlist) error {
+	playlistsDB.rwLock.Lock()
+	defer playlistsDB.rwLock.Unlock()
+
+	_, err := playlistsDB.db.Exec(fmt.Sprintf(
+		"DELETE FROM %s WHERE %s = ? AND %s = ?",
+		TablePlaylists, ColumnApikey.name, ColumnName.name),
+		playlist.ApiKey, playlist.Name)
+	return err
+}
+
+func (playlistsDB *PlaylistsDB) SetPublic(playlist Playlist) error {
+	playlistsDB.rwLock.Lock()
+	defer playlistsDB.rwLock.Unlock()
+
+	_, err := playlistsDB.db.Exec(fmt.Sprintf(
+		"UPDATE %s SET %s = ? WHERE %s = ? AND %s = ?",
+		TablePlaylists, ColumnPublic.name, ColumnApikey.name, ColumnName.name),
+		playlist.Public, playlist.ApiKey, playlist.Name)
+	return err
+}
+
+func (playlistsDB *PlaylistsDB) GetPlaylistIds(playlist Playlist) ([]string, error) {
+	playlistsDB.rwLock.RLock()
+	defer playlistsDB.rwLock.RUnlock()
+	return playlistsDB.getPlaylistIds(playlist)
+}
+
+func (playlistsDB *PlaylistsDB) getPlaylistIds(playlist Playlist) ([]string, error) {
+	stmt, err := playlistsDB.db.Prepare(fmt.Sprintf(
+		"SELECT %s FROM %s WHERE %s = ? AND %s = ?",
+		ColumnIds.name, TablePlaylists, ColumnApikey.name, ColumnName.name))
 	if err != nil {
 		return nil, err
 	}
+	defer stmt.Close()
 
-	publicPlaylists, err := playlistNamesDB.ListPlaylistNames(user.ApiKey, true)
+	row := stmt.QueryRow(playlist.ApiKey, playlist.Name)
+	var ids string
+	err = row.Scan(&ids)
 	if err != nil {
 		return nil, err
 	}
+	list := strings.Split(ids, ",")
+	if len(list) == 1 && utils.StringIsEmpty(list[0]) {
+		list = make([]string, 0)
+	}
+	return list, nil
+}
 
-	found := false
-	for _, playlist := range publicPlaylists {
-		if playlist.Name == playlistLinkPublic.Playlist {
-			found = true
+func (playlistsDB *PlaylistsDB) IsPlaylistPublic(playlist Playlist) bool {
+	playlistsDB.rwLock.RLock()
+	defer playlistsDB.rwLock.RUnlock()
+
+	row := playlistsDB.db.QueryRow(fmt.Sprintf(
+		"SELECT 1 FROM %s WHERE %s = ? AND %s = ? AND %s = ?",
+		TablePlaylists, ColumnApikey.name, ColumnName.name, ColumnPublic.name),
+		playlist.ApiKey, playlist.Name, true)
+
+	var public bool
+	err := row.Scan(&public)
+	return err == nil && public
+}
+
+func (playlistsDB *PlaylistsDB) AddIdToPlaylist(playlistId PlaylistId) error {
+	playlistsDB.rwLock.Lock()
+	defer playlistsDB.rwLock.Unlock()
+
+	ids, err := playlistsDB.getPlaylistIds(Playlist{
+		ApiKey: playlistId.ApiKey, Name: playlistId.Name})
+	if err != nil {
+		return err
+	}
+
+	ids = append(ids, playlistId.Id)
+	return playlistsDB.setPlaylistIds(PlaylistIds{
+		playlistId.ApiKey, playlistId.Name, ids})
+}
+
+func (playlistsDB *PlaylistsDB) DeleteIdFromPlaylist(playlistId PlaylistId) error {
+	playlistsDB.rwLock.Lock()
+	defer playlistsDB.rwLock.Unlock()
+
+	ids, err := playlistsDB.getPlaylistIds(Playlist{
+		ApiKey: playlistId.ApiKey, Name: playlistId.Name})
+	if err != nil {
+		return err
+	}
+
+	index := -1
+	for i, id := range ids {
+		if id == playlistId.Id {
+			index = i
 			break
 		}
 	}
-	if !found {
-		return nil, fmt.Errorf(playlistLinkPublic.Playlist + " is not public")
+	if index < 0 {
+		return fmt.Errorf("id to delete not found")
 	}
 
-	return playlistsDB.ListPlaylistLinks(PlaylistName{
-		ApiKey: user.ApiKey, Name: playlistLinkPublic.Playlist,
-	})
+	newIds := ids[:index]
+	newIds = append(newIds, ids[index+1:]...)
+	return playlistsDB.setPlaylistIds(PlaylistIds{
+		playlistId.ApiKey, playlistId.Name, newIds})
+}
+
+func (playlistsDB *PlaylistsDB) SetPlaylistIds(playlistIds PlaylistIds) error {
+	playlistsDB.rwLock.Lock()
+	defer playlistsDB.rwLock.Unlock()
+	return playlistsDB.setPlaylistIds(playlistIds)
+}
+
+func (playlistsDB *PlaylistsDB) setPlaylistIds(playlistIds PlaylistIds) error {
+	set := make(map[string]struct{})
+	for _, id := range playlistIds.Ids {
+		if _, ok := set[id]; ok {
+			return fmt.Errorf("duplicate in ids")
+		}
+		set[id] = struct{}{}
+	}
+
+	_, err := playlistsDB.db.Exec(fmt.Sprintf(
+		"UPDATE %s SET %s = ? WHERE %s = ? AND %s = ?",
+		TablePlaylists, ColumnIds.name, ColumnApikey.name, ColumnName.name),
+		strings.Join(playlistIds.Ids, ","), playlistIds.ApiKey, playlistIds.Name)
+	return err
 }
