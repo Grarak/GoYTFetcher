@@ -1,14 +1,11 @@
 package miniserver
 
 import (
-	"io/ioutil"
 	"net/http"
 	"net"
 	"strconv"
 
 	"../utils"
-	"strings"
-	"fmt"
 )
 
 const (
@@ -33,8 +30,8 @@ func NewServer(port int) *MiniServer {
 	}
 }
 
-func (miniserver *MiniServer) StartListening(callback func(client *Client) *Response) {
-	http.HandleFunc("/", func(response http.ResponseWriter, request *http.Request) {
+func (miniserver *MiniServer) StartListening(callback func(client *Client) Response) {
+	http.HandleFunc("/", func(writer http.ResponseWriter, request *http.Request) {
 		defer request.Body.Close()
 
 		request.ParseForm()
@@ -42,66 +39,10 @@ func (miniserver *MiniServer) StartListening(callback func(client *Client) *Resp
 
 		res := callback(client)
 		if res == nil {
-			response.WriteHeader(http.StatusNotFound)
-			response.Write([]byte("Not found"))
+			writer.WriteHeader(http.StatusNotFound)
+			writer.Write([]byte("Not found"))
 		} else {
-			content := res.body
-			if !utils.StringIsEmpty(res.contentType) {
-				response.Header().Set("Content-Type", res.contentType)
-			}
-			response.Header().Set("Server", res.serverDescription)
-
-			if utils.StringIsEmpty(res.file) {
-				if utils.FileExists(res.file) {
-					buf, err := ioutil.ReadFile(res.file)
-					if err == nil {
-						content = buf
-					}
-				}
-			}
-
-			rangeParser := func(headers http.Header, response []byte, ranges string) []byte {
-				ranges = strings.Replace(ranges, "bytes=", "", 1)
-
-				responseLength := len(response)
-				middleIndex := strings.Index(ranges, "-")
-				start, err := strconv.Atoi(ranges[:middleIndex])
-				if err != nil {
-					return response
-				}
-				end := responseLength - 1
-				if middleIndex+1 < len(ranges) {
-					end, err = strconv.Atoi(ranges[middleIndex+1:])
-					if err != nil {
-						return response
-					}
-					if end >= responseLength {
-						end = responseLength - 1
-					}
-				}
-
-				var finalResponse []byte
-				finalResponse = append(finalResponse, response[start:end+1]...)
-
-				headers.Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", start, end, responseLength))
-				return finalResponse
-			}
-
-			ranges := client.Header.Get("Range")
-
-			statusCode := res.statusCode
-			if statusCode == http.StatusOK &&
-				strings.HasPrefix(ranges, "bytes=") &&
-				strings.Contains(ranges, "-") {
-				content = rangeParser(response.Header(), content, ranges)
-				statusCode = http.StatusPartialContent
-			}
-
-			response.Header().Set("Accept-Ranges", "bytes")
-			response.Header().Set("Content-Length", strconv.Itoa(len(content)))
-
-			response.WriteHeader(statusCode)
-			response.Write(content)
+			res.write(writer, client)
 		}
 	})
 

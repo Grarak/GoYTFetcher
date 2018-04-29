@@ -2,48 +2,37 @@ package miniserver
 
 import (
 	"net/http"
+	"strings"
+	"strconv"
+	"fmt"
 )
 
-type Response struct {
-	file, contentType, serverDescription string
-	body                                 []byte
-	statusCode                           int
+type Response interface {
+	write(writer http.ResponseWriter, client *Client)
 }
 
-func newResponseBody(body string) *Response {
-	response := newResponse()
-	response.body = []byte(body)
-	return response
-}
+func rangeParser(response []byte, ranges string) ([]byte, string) {
+	ranges = strings.Replace(ranges, "bytes=", "", 1)
 
-func newResponseBodyBytes(body []byte) *Response {
-	response := newResponse()
-	response.body = body
-	return response
-}
-
-func newResponseFile(file string) *Response {
-	response := newResponse()
-	response.file = file
-	return response
-}
-
-func newResponse() *Response {
-	return &Response{
-		contentType:       ContentText,
-		serverDescription: "Go MiniServer",
-		statusCode:        http.StatusOK,
+	responseLength := len(response)
+	middleIndex := strings.Index(ranges, "-")
+	start, err := strconv.Atoi(ranges[:middleIndex])
+	if err != nil {
+		return response, ""
 	}
-}
+	end := responseLength - 1
+	if middleIndex+1 < len(ranges) {
+		end, err = strconv.Atoi(ranges[middleIndex+1:])
+		if err != nil {
+			return response, ""
+		}
+		if end >= responseLength {
+			end = responseLength - 1
+		}
+	}
 
-func (response *Response) SetContentType(contentType string) {
-	response.contentType = contentType
-}
+	var finalResponse []byte
+	finalResponse = append(finalResponse, response[start:end+1]...)
 
-func (response *Response) SetStatusCode(code int) {
-	response.statusCode = code
-}
-
-func (response *Response) SetServerDescription(description string) {
-	response.serverDescription = description
+	return finalResponse, fmt.Sprintf("bytes %d-%d/%d", start, end, responseLength)
 }

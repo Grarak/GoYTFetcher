@@ -47,7 +47,7 @@ func (youtubeSong *YoutubeSong) setDownloaded(downloaded bool) {
 	youtubeSong.downloaded = downloaded
 }
 
-func (youtubeSong *YoutubeSong) isDownloading() bool {
+func (youtubeSong *YoutubeSong) IsDownloading() bool {
 	youtubeSong.valuesLock.RLock()
 	defer youtubeSong.valuesLock.RUnlock()
 	return youtubeSong.downloading
@@ -59,7 +59,7 @@ func (youtubeSong *YoutubeSong) setDownloading(downloading bool) {
 	youtubeSong.downloading = downloading
 }
 
-func (youtubeSong *YoutubeSong) read() ([]byte, error) {
+func (youtubeSong *YoutubeSong) Read() ([]byte, error) {
 	youtubeSong.rwLock.RLock()
 	defer youtubeSong.rwLock.RUnlock()
 	return ioutil.ReadFile(youtubeSong.getFilePath())
@@ -131,8 +131,6 @@ func (youtubeSong *YoutubeSong) getFilePath() string {
 }
 
 func (youtubeSong *YoutubeSong) getEncryptedId(key []byte) string {
-	youtubeSong.rwLock.RLock()
-	defer youtubeSong.rwLock.RUnlock()
 	if utils.StringIsEmpty(youtubeSong.encryptedId) {
 		id := youtubeSong.id
 		for i := len(id); i < aes.BlockSize; i++ {

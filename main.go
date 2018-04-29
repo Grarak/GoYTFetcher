@@ -17,7 +17,7 @@ import (
 	"os/exec"
 )
 
-func clientHandler(client *miniserver.Client) *miniserver.Response {
+func clientHandler(client *miniserver.Client) miniserver.Response {
 	log := client.IPAddr + ": " + client.Method + " " + client.Url
 	if ranges := client.Header.Get("Range"); !utils.StringIsEmpty(ranges) {
 		log += " " + ranges

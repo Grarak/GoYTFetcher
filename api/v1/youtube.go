@@ -10,7 +10,7 @@ import (
 	"net/url"
 )
 
-func youtubeFetch(client *miniserver.Client) *miniserver.Response {
+func youtubeFetch(client *miniserver.Client) miniserver.Response {
 	request, err := database.NewYoutube(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -22,7 +22,7 @@ func youtubeFetch(client *miniserver.Client) *miniserver.Response {
 
 		logger.I(requester.Name + " fetching " + request.Id)
 		youtubeDB := database.GetDatabase().YoutubeDB
-		urlLink, err := youtubeDB.FetchYoutubeSong(request.Id)
+		u, id, err := youtubeDB.FetchYoutubeSong(request.Id)
 		if err != nil {
 			logger.E(err)
 			return client.CreateResponse(utils.StatusYoutubeFetchFailure)
@@ -34,39 +34,49 @@ func youtubeFetch(client *miniserver.Client) *miniserver.Response {
 				return client.CreateResponse(utils.StatusAddHistoryFailed)
 			}
 		}
-		if !strings.HasPrefix(urlLink, "http") {
+		if !strings.HasPrefix(u, "http") {
 			query := url.Values{}
-			query.Set("id", urlLink)
+			query.Set("id", u)
 
 			host := youtubeDB.Host
 			if !strings.HasPrefix(host, "http") {
 				host = "http://" + host
 			}
-			urlLink = host + "/api/v1/youtube/get?" + query.Encode()
+			u = host + "/api/v1/youtube/get?" + query.Encode()
 		}
-		return client.ResponseBody(urlLink)
+		response := client.ResponseBody(u)
+		response.SetHeader("ytfetcher-id", id)
+		return response
 	}
 
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func youtubeGet(client *miniserver.Client) *miniserver.Response {
+func youtubeGet(client *miniserver.Client) miniserver.Response {
 	id := client.Queries.Get("id")
-	if utils.StringIsEmpty(id) {
-		return client.CreateResponse(utils.StatusInvalid)
+	u := client.Queries.Get("url")
+
+	if !utils.StringIsEmpty(id) {
+		youtubeSong, err := database.GetDatabase().YoutubeDB.GetYoutubeSong(id)
+		if err != nil {
+			return client.CreateResponse(utils.StatusYoutubeGetFailure)
+		}
+		if youtubeSong.IsDownloading() && strings.Contains(u, "googlevideo") {
+			return miniserver.NewForwardResponse(u)
+		}
+
+		data, err := youtubeSong.Read()
+		if err == nil {
+			response := client.ResponseBodyBytes(data)
+			response.SetContentType(miniserver.ContentOgg)
+			return response
+		}
 	}
 
-	data, err := database.GetDatabase().YoutubeDB.GetYoutubeSong(id)
-	if err != nil {
-		return client.CreateResponse(utils.StatusYoutubeGetFailure)
-	}
-
-	response := client.ResponseBodyBytes(data)
-	response.SetContentType("")
-	return response
+	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func youtubeSearch(client *miniserver.Client) *miniserver.Response {
+func youtubeSearch(client *miniserver.Client) miniserver.Response {
 	request, err := database.NewYoutube(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -87,7 +97,7 @@ func youtubeSearch(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func youtubeGetInfo(client *miniserver.Client) *miniserver.Response {
+func youtubeGetInfo(client *miniserver.Client) miniserver.Response {
 	request, err := database.NewYoutube(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -106,7 +116,7 @@ func youtubeGetInfo(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func youtubeGetCharts(client *miniserver.Client) *miniserver.Response {
+func youtubeGetCharts(client *miniserver.Client) miniserver.Response {
 	request, err := database.NewYoutube(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -125,7 +135,7 @@ func youtubeGetCharts(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func HandleYoutubeV1(path string, client *miniserver.Client) *miniserver.Response {
+func HandleYoutubeV1(path string, client *miniserver.Client) miniserver.Response {
 	switch path {
 	case "fetch":
 		if client.Method == http.MethodPost && client.IsContentJson() {

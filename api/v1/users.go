@@ -11,7 +11,7 @@ import (
 	"fmt"
 )
 
-func usersSignUp(client *miniserver.Client) *miniserver.Response {
+func usersSignUp(client *miniserver.Client) miniserver.Response {
 	request, err := database.NewUser(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -27,7 +27,7 @@ func usersSignUp(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(code)
 }
 
-func usersLogin(client *miniserver.Client) *miniserver.Response {
+func usersLogin(client *miniserver.Client) miniserver.Response {
 	request, err := database.NewUser(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -44,7 +44,7 @@ func usersLogin(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(code)
 }
 
-func usersList(client *miniserver.Client) *miniserver.Response {
+func usersList(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewUser(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -66,7 +66,7 @@ func usersList(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func usersSetVerification(client *miniserver.Client) *miniserver.Response {
+func usersSetVerification(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewUser(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -84,7 +84,7 @@ func usersSetVerification(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func usersDelete(client *miniserver.Client) *miniserver.Response {
+func usersDelete(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewUser(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -102,7 +102,7 @@ func usersDelete(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func usersDeleteAll(client *miniserver.Client) *miniserver.Response {
+func usersDeleteAll(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewUser(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -120,7 +120,7 @@ func usersDeleteAll(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func usersResetPassword(client *miniserver.Client) *miniserver.Response {
+func usersResetPassword(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewUser(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -138,7 +138,7 @@ func usersResetPassword(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistList(client *miniserver.Client) *miniserver.Response {
+func playlistList(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -153,7 +153,7 @@ func playlistList(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistListPublic(client *miniserver.Client) *miniserver.Response {
+func playlistListPublic(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -176,7 +176,7 @@ func playlistListPublic(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistCreate(client *miniserver.Client) *miniserver.Response {
+func playlistCreate(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -196,7 +196,7 @@ func playlistCreate(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistDelete(client *miniserver.Client) *miniserver.Response {
+func playlistDelete(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -211,7 +211,7 @@ func playlistDelete(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistSetPublic(client *miniserver.Client) *miniserver.Response {
+func playlistSetPublic(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -226,7 +226,7 @@ func playlistSetPublic(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistListIds(client *miniserver.Client) *miniserver.Response {
+func playlistListIds(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewPlaylist(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -241,7 +241,7 @@ func playlistListIds(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistListIdsPublic(client *miniserver.Client) *miniserver.Response {
+func playlistListIdsPublic(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewPlaylistPublic(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -266,7 +266,7 @@ func playlistListIdsPublic(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistAddId(client *miniserver.Client) *miniserver.Response {
+func playlistAddId(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewPlaylistId(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -286,7 +286,7 @@ func playlistAddId(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistDeleteId(client *miniserver.Client) *miniserver.Response {
+func playlistDeleteId(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewPlaylistId(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -305,7 +305,7 @@ func playlistDeleteId(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func playlistSetIds(client *miniserver.Client) *miniserver.Response {
+func playlistSetIds(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewPlaylistIds(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -324,7 +324,7 @@ func playlistSetIds(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func historyList(client *miniserver.Client) *miniserver.Response {
+func historyList(client *miniserver.Client) *miniserver.SimpleResponse {
 	request, err := database.NewHistory(client.Request)
 	if err != nil {
 		return client.CreateResponse(utils.StatusInvalid)
@@ -339,7 +339,7 @@ func historyList(client *miniserver.Client) *miniserver.Response {
 	return client.CreateResponse(utils.StatusInvalid)
 }
 
-func HandleUsersV1(path string, client *miniserver.Client) *miniserver.Response {
+func HandleUsersV1(path string, client *miniserver.Client) miniserver.Response {
 	if client.Method != http.MethodPost || !client.IsContentJson() {
 		return nil
 	}
