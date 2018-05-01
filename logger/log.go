@@ -20,7 +20,6 @@ const LogFileSize = 100 * 1024
 
 var log = logging.MustGetLogger("example")
 var format = logging.MustStringFormatter("%{color}%{time:Jan 2 15:04:05.000}: %{message}%{color:reset}")
-var formatTrace = logging.MustStringFormatter("%{color}%{time:Jan 2 15:04:05.000} %{callpath}: %{message}%{color:reset}")
 var lock sync.Mutex
 var logFile *os.File
 
@@ -40,7 +39,7 @@ func Init() {
 	fileBackend := logging.NewLogBackend(logFile, "", 0)
 
 	logging.SetBackend(logging.NewBackendFormatter(consoleBackend, format),
-		logging.NewBackendFormatter(fileBackend, formatTrace))
+		logging.NewBackendFormatter(fileBackend, format))
 }
 
 func I(message interface{}) {
