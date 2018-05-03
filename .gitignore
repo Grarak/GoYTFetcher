@@ -1,14 +1,12 @@
-
-### Example user template template
-### Example user template
-
 .DS_Store
 ~*
 
 # IntelliJ project files
-.idea
+/.idea/*.xml
+!/.idea/modules.xml
 *.iml
 out
+!app.iml
 
 /files
 /ytfetcher*

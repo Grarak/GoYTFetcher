@@ -50,7 +50,7 @@ func main() {
 	}
 
 	codecs, err := utils.ExecuteCmd(ffmpeg, "-codecs")
-	if err != nil || !strings.Contains(codecs, "libvorbis") {
+	if err != nil || !strings.Contains(codecs, "vorbis") {
 		logger.E(utils.FFMPEG + " vorbis is not enabled")
 		return
 	}

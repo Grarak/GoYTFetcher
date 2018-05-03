@@ -1,6 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="YTFetcher (No api key)" type="GoApplicationRunConfiguration" factoryName="Go Application">
-    <module name="GoYTFetcher" />
+    <module name="app" />
     <working_directory value="$PROJECT_DIR$" />
     <go_parameters value="-i" />
     <kind value="DIRECTORY" />
