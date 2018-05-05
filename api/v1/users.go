@@ -37,7 +37,6 @@ func usersLogin(client *miniserver.Client) miniserver.Response {
 	user, code := usersDB.GetUserWithPassword(request.Name, request.Password)
 	if code == utils.StatusNoError {
 		logger.I(user.Name + " logged in")
-
 		return client.CreateJsonResponse(user)
 	}
 
@@ -251,7 +250,7 @@ func playlistListIdsPublic(client *miniserver.Client) *miniserver.SimpleResponse
 	playlistsDB := database.GetDatabase().PlaylistsDB
 	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
 		err == nil && *requester.Verified {
-		user, err := usersDB.FindUserByName(request.UserName)
+		user, err := usersDB.FindUserByName(request.Name)
 		if err == nil {
 			playlist := database.Playlist{ApiKey: user.ApiKey, Name: request.Playlist}
 			if playlistsDB.IsPlaylistPublic(playlist) {

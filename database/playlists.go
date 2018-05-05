@@ -31,7 +31,7 @@ type PlaylistIds struct {
 
 type PlaylistLinkPublic struct {
 	ApiKey   string `json:"apikey,omitempty"`
-	UserName string `json:"username"`
+	Name     string `json:"name"`
 	Playlist string `json:"playlist"`
 }
 
