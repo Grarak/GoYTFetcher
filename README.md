@@ -34,9 +34,18 @@ Youtube API key is used for searching and getting video information. When no key
 it will rely on youtube-dl. Only feature which totally depends on the Youtube API is getting
 popular videos.
 
+The first user who sign ups will automatically promoted to administrator and can unlock other
+users. When you request a video, then the server will first return the audio link from google
+and start the downloading of the video at the same time. Once the download is finished and the
+same video is requested again, it will serve the local audio file. Both the link from google
+the local audio file are encoded in vorbis format. (Audio bitrate: Google: 160kb/s, Downloaded: 96kb/s)
+
 ## Clients
 
 * **Android:** [YTFetcher](https://github.com/Grarak/YTFetcher)
+
+If you want write your own client. Please let me know, then I can write up a documentation
+for API calls.
 
 ## Libraries
 
