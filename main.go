@@ -18,13 +18,6 @@ import (
 )
 
 func clientHandler(client *miniserver.Client) miniserver.Response {
-	log := client.IPAddr + ": " + client.Method + " " + client.Url
-	if ranges := client.Header.Get("Range"); !utils.StringIsEmpty(ranges) {
-		log += " " + ranges
-	}
-
-	logger.I(log)
-
 	args := strings.Split(client.Url, "/")[1:]
 	if args[0] == "api" {
 		return api.GetResponse(args[1], args[2], args[3:], client)
