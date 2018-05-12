@@ -1,15 +1,16 @@
 package database
 
 import (
+	"io/ioutil"
 	"sync"
 	"time"
-	"io/ioutil"
 
-	"../utils"
-	"strings"
 	"encoding/json"
-	"os/exec"
 	"fmt"
+	"os/exec"
+	"strings"
+
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 type Youtube struct {

@@ -1,10 +1,10 @@
 package miniserver
 
 import (
-	"net/http"
 	"bytes"
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 )
 
 type ForwardResponse struct {

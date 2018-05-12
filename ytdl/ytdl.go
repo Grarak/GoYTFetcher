@@ -1,21 +1,22 @@
 package ytdl
 
 import (
-	"time"
-	"net/url"
-	"net/http"
-	"fmt"
-	"io/ioutil"
-	"regexp"
-	"strings"
-	"strconv"
-	"encoding/json"
 	"bytes"
-	"github.com/PuerkitoBio/goquery"
-	"../utils"
-	"../logger"
+	"encoding/json"
 	"encoding/xml"
+	"fmt"
 	"io"
+	"io/ioutil"
+	"net/http"
+	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/Grarak/GoYTFetcher/logger"
+	"github.com/Grarak/GoYTFetcher/utils"
+	"github.com/PuerkitoBio/goquery"
 )
 
 const youtubeBaseURL = "https://www.youtube.com/watch"

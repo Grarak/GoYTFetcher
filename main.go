@@ -2,17 +2,19 @@ package main
 
 import (
 	"flag"
-	"os/signal"
-	"os"
 	"fmt"
+	"os"
+	"os/signal"
 
-	"./logger"
-	"./miniserver"
 	"strconv"
 	"strings"
-	"./api"
-	"./utils"
-	"./database"
+
+	"github.com/Grarak/GoYTFetcher/api"
+	"github.com/Grarak/GoYTFetcher/database"
+	"github.com/Grarak/GoYTFetcher/logger"
+	"github.com/Grarak/GoYTFetcher/miniserver"
+	"github.com/Grarak/GoYTFetcher/utils"
+
 	"net/http"
 	"os/exec"
 )

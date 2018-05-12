@@ -1,12 +1,13 @@
 package miniserver
 
 import (
-	"net/http"
-	"io/ioutil"
-	"strings"
-	"strconv"
-	"../utils"
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
+	"strconv"
+	"strings"
+
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 type SimpleResponse struct {

@@ -4,9 +4,10 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"sync"
 	"strings"
-	"../utils"
+	"sync"
+
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 const TablePlaylists = "playlists"

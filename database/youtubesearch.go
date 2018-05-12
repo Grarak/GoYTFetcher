@@ -1,21 +1,22 @@
 package database
 
 import (
-	"sync"
-	"os/exec"
-	"regexp"
-	"strings"
-	"sort"
 	"bufio"
 	"fmt"
 	"net/http"
+	"os/exec"
+	"regexp"
+	"sort"
+	"strings"
+	"sync"
 
-	"../utils"
 	"net/url"
-	"../ytdl"
-	"unicode"
 	"strconv"
-	"../logger"
+	"unicode"
+
+	"github.com/Grarak/GoYTFetcher/logger"
+	"github.com/Grarak/GoYTFetcher/utils"
+	"github.com/Grarak/GoYTFetcher/ytdl"
 )
 
 var searchWebSiteRegex = regexp.MustCompile("href=\"/watch\\?v=([a-z_A-Z0-9\\-]{11})\"")

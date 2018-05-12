@@ -2,10 +2,10 @@ package database
 
 import (
 	"database/sql"
-	"time"
-	"fmt"
 	"encoding/json"
+	"fmt"
 	"sync"
+	"time"
 )
 
 const TableHistories = "histories"

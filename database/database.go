@@ -1,10 +1,10 @@
 package database
 
 import (
-	"sync"
 	"database/sql"
+	"sync"
 
-	"../utils"
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 var singletonLock sync.Mutex

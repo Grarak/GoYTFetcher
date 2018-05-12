@@ -1,12 +1,12 @@
 package utils
 
 import (
-	"encoding/base64"
-	"crypto/rand"
 	"crypto/aes"
-	"io"
 	"crypto/cipher"
+	"crypto/rand"
+	"encoding/base64"
 	"fmt"
+	"io"
 )
 
 func Encode(text string) string {

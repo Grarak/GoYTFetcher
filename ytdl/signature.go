@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"../utils"
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 func getDownloadURL(format Format, htmlPlayerFile string) (*url.URL, error) {

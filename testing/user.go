@@ -1,7 +1,7 @@
 package main
 
 import "encoding/json"
-import "../utils"
+import "github.com/Grarak/GoYTFetcher/utils"
 
 type User struct {
 	ApiKey   string `json:"apikey,omitempty"`
