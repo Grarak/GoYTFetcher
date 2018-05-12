@@ -5,8 +5,6 @@ import (
 
 	"github.com/Grarak/GoYTFetcher/utils"
 
-	_ "github.com/mattn/go-sqlite3"
-
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"

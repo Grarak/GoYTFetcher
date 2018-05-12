@@ -26,7 +26,15 @@ func NewYoutube(data []byte) (Youtube, error) {
 	return youtube, err
 }
 
-type YoutubeDB struct {
+type YouTubeDB interface {
+	GetYoutubeSong(id string) (*YoutubeSong, error)
+	FetchYoutubeSong(id string) (string, string, error)
+	GetYoutubeSearch(searchQuery string) ([]YoutubeSearchResult, error)
+	GetYoutubeInfo(id string) (YoutubeSearchResult, error)
+	GetYoutubeCharts() ([]YoutubeSearchResult, error)
+}
+
+type youtubeDBImpl struct {
 	Host      string
 	randomKey []byte
 
@@ -49,17 +57,20 @@ type YoutubeDB struct {
 	chartsLastFetched time.Time
 }
 
-func newYoutubeDB() (*YoutubeDB, error) {
+func newYoutubeDB(host string, key []byte, ytKey string) (YouTubeDB, error) {
 	youtubeDL, err := exec.LookPath(utils.YOUTUBE_DL)
 	if err != nil {
 		return nil, err
 	}
 
-	youtubeDB := &YoutubeDB{
+	youtubeDB := &youtubeDBImpl{
 		youtubeDL:       youtubeDL,
 		songsRanking:    new(rankingTree),
 		searchesRanking: new(rankingTree),
 		idRanking:       new(rankingTree),
+		Host:            host,
+		randomKey:       key,
+		ytKey:           ytKey,
 	}
 
 	files, err := ioutil.ReadDir(utils.YOUTUBE_DIR)
@@ -83,7 +94,7 @@ func newYoutubeDB() (*YoutubeDB, error) {
 	return youtubeDB, nil
 }
 
-func (youtubeDB *YoutubeDB) GetYoutubeSong(id string) (*YoutubeSong, error) {
+func (youtubeDB *youtubeDBImpl) GetYoutubeSong(id string) (*YoutubeSong, error) {
 	decryptedId, err := utils.Decrypt(youtubeDB.randomKey, id)
 	if err != nil {
 		return nil, err
@@ -97,7 +108,7 @@ func (youtubeDB *YoutubeDB) GetYoutubeSong(id string) (*YoutubeSong, error) {
 	return youtubeSong, nil
 }
 
-func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, string, error) {
+func (youtubeDB *youtubeDBImpl) FetchYoutubeSong(id string) (string, string, error) {
 	youtubeSong := newYoutubeSong(id)
 	loadedSong, loaded := youtubeDB.songs.LoadOrStore(id, youtubeSong)
 	if loaded {
@@ -146,7 +157,7 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, string, error) 
 	return url, encryptedId, nil
 }
 
-func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearchResult, error) {
+func (youtubeDB *youtubeDBImpl) GetYoutubeSearch(searchQuery string) ([]YoutubeSearchResult, error) {
 	if utils.StringIsEmpty(searchQuery) {
 		return nil, fmt.Errorf("search query is empty")
 	}
@@ -180,15 +191,14 @@ func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearc
 
 	youtubeSearchResults := make([]YoutubeSearchResult, 0)
 	for _, id := range results {
-		result, err := youtubeDB.GetYoutubeInfo(id)
-		if err == nil {
+		if result, e := youtubeDB.GetYoutubeInfo(id); e == nil {
 			youtubeSearchResults = append(youtubeSearchResults, result)
 		}
 	}
 	return youtubeSearchResults, err
 }
 
-func (youtubeDB *YoutubeDB) GetYoutubeInfo(id string) (YoutubeSearchResult, error) {
+func (youtubeDB *youtubeDBImpl) GetYoutubeInfo(id string) (YoutubeSearchResult, error) {
 	if utils.StringIsEmpty(id) {
 		return YoutubeSearchResult{}, fmt.Errorf("id is empty")
 	}
@@ -222,7 +232,7 @@ func (youtubeDB *YoutubeDB) GetYoutubeInfo(id string) (YoutubeSearchResult, erro
 	return result, err
 }
 
-func (youtubeDB *YoutubeDB) GetYoutubeCharts() ([]YoutubeSearchResult, error) {
+func (youtubeDB *youtubeDBImpl) GetYoutubeCharts() ([]YoutubeSearchResult, error) {
 	youtubeDB.chartsLock.RLock()
 	if len(youtubeDB.charts) == 0 || youtubeDB.chartsLastFetched.Day() != time.Now().Day() {
 		youtubeDB.chartsLock.RUnlock()

@@ -65,10 +65,7 @@ func main() {
 	utils.MkDir(utils.DATABASE)
 	utils.MkDir(utils.YOUTUBE_DIR)
 
-	databaseInstance := database.GetDatabase()
-	databaseInstance.SetHost(host)
-	databaseInstance.SetRandomKey(utils.GenerateRandom(16))
-	databaseInstance.SetYTApiKey(ytKey)
+	databaseInstance := database.GetDatabase(host, utils.GenerateRandom(16), ytKey)
 
 	server := miniserver.NewServer(port)
 

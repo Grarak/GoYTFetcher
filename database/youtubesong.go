@@ -72,7 +72,7 @@ func (youtubeSong *YoutubeSong) getGoogleUrl() string {
 	return youtubeSong.googleUrl
 }
 
-func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
+func (youtubeSong *YoutubeSong) download(youtubeDB *youtubeDBImpl) error {
 	youtubeSong.setDownloading(true)
 	youtubeSong.rwLock.Lock()
 	defer youtubeSong.rwLock.Unlock()

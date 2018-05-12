@@ -23,13 +23,14 @@ func (forwardResponse *ForwardResponse) write(writer http.ResponseWriter, client
 	uClient := &http.Client{}
 	uRequest, err := http.NewRequest(client.Method, forwardResponse.u,
 		bytes.NewReader(client.Request))
-	for key := range client.Header {
-		uRequest.Header.Set(key, client.Header.Get(key))
-	}
 
 	if err != nil {
 		errWriter()
 		return
+	}
+
+	for key := range client.Header {
+		uRequest.Header.Set(key, client.Header.Get(key))
 	}
 
 	uResponse, err := uClient.Do(uRequest)
@@ -48,14 +49,12 @@ func (forwardResponse *ForwardResponse) write(writer http.ResponseWriter, client
 	if ok {
 		for {
 			buf := make([]byte, 8192)
-			read, err := uResponse.Body.Read(buf)
-			if read == 0 {
+			if read, err := uResponse.Body.Read(buf); err != nil || read == 0 {
+				break
+			} else if _, err := writer.Write(buf[:read]); err != nil {
 				break
 			}
-			_, err = writer.Write(buf[:read])
-			if err != nil {
-				break
-			}
+
 			flusher.Flush()
 		}
 	} else if body, err := ioutil.ReadAll(uResponse.Body); err == nil {
