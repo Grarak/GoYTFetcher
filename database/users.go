@@ -2,17 +2,17 @@ package database
 
 import (
 	"database/sql"
-	"../utils"
 
-	_ "github.com/mattn/go-sqlite3"
+	"github.com/Grarak/GoYTFetcher/utils"
 
-	"regexp"
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"reflect"
-	"encoding/json"
-	"golang.org/x/crypto/pbkdf2"
-	"crypto/sha256"
+	"regexp"
 	"sync"
+
+	"golang.org/x/crypto/pbkdf2"
 )
 
 const TableUsers = "users"

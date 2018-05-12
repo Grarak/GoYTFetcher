@@ -1,10 +1,10 @@
 package database
 
 import (
-	"sync"
 	"database/sql"
+	"sync"
 
-	"../utils"
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 var singletonLock sync.Mutex
@@ -17,10 +17,14 @@ type Database struct {
 	PlaylistsDB *PlaylistsDB
 	HistoriesDB *HistoriesDB
 
-	YoutubeDB *YoutubeDB
+	YoutubeDB YouTubeDB
 }
 
-func GetDatabase() *Database {
+func GetDefaultDatabase() *Database {
+	return GetDatabase("", nil, "")
+}
+
+func GetDatabase(host string, key []byte, ytKey string) *Database {
 	singletonLock.Lock()
 	defer singletonLock.Unlock()
 
@@ -45,7 +49,7 @@ func GetDatabase() *Database {
 	historiesDB, err := newHistoriesDB(db, rwLock)
 	utils.Panic(err)
 
-	youtubeDB, err := newYoutubeDB()
+	youtubeDB, err := newYoutubeDB(host, key, ytKey)
 	utils.Panic(err)
 
 	databaseInstance = &Database{
@@ -56,18 +60,6 @@ func GetDatabase() *Database {
 		youtubeDB,
 	}
 	return databaseInstance
-}
-
-func (database *Database) SetHost(host string) {
-	database.YoutubeDB.Host = host
-}
-
-func (database *Database) SetRandomKey(key []byte) {
-	database.YoutubeDB.randomKey = key
-}
-
-func (database *Database) SetYTApiKey(key string) {
-	database.YoutubeDB.ytKey = key
 }
 
 func (database *Database) Close() error {

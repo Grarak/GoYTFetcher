@@ -1,9 +1,10 @@
 package api
 
 import (
-	"../miniserver"
-	"./v1"
 	"strings"
+
+	"github.com/Grarak/GoYTFetcher/api/v1"
+	"github.com/Grarak/GoYTFetcher/miniserver"
 )
 
 type apiHandle func(path string, client *miniserver.Client) miniserver.Response
@@ -13,6 +14,7 @@ var v1Apis = map[string]apiHandle{
 	"youtube": v1.HandleYoutubeV1,
 }
 
+// GetResponse makes the request and gets the response from the server
 func GetResponse(version, api string, args []string, client *miniserver.Client) miniserver.Response {
 	var response apiHandle
 	switch version {

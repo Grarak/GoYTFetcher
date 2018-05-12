@@ -5,14 +5,13 @@ all:
 	make ytfetcher_test
 
 ytfetcher:
-	go get -u github.com/mattn/go-sqlite3
-	go get -u golang.org/x/crypto/pbkdf2
-	go get -u github.com/PuerkitoBio/goquery
-	go get -u github.com/op/go-logging
 	go build -i -o ytfetcher main.go
 
 ytfetcher_test:
 	go build -i -o ytfetcher_test testing/*.go
+
+lint:
+	gometalinter --vendor --disable-all --enable=vet --enable=goimports --enable=vetshadow --enable=golint --enable=ineffassign --enable=goconst --deadline=120s --tests ./...
 
 clean:
 	rm -f ytfetcher

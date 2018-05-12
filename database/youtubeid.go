@@ -2,7 +2,8 @@ package database
 
 import (
 	"sync"
-	"../utils"
+
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 type YoutubeId struct {
@@ -19,7 +20,7 @@ func newYoutubeId(id string) *YoutubeId {
 	return &YoutubeId{id: id, count: 1}
 }
 
-func (youtubeId *YoutubeId) fetchId(youtubeDB *YoutubeDB) (YoutubeSearchResult, error) {
+func (youtubeId *YoutubeId) fetchId(youtubeDB *youtubeDBImpl) (YoutubeSearchResult, error) {
 	youtubeId.rwLock.Lock()
 	defer youtubeId.rwLock.Unlock()
 

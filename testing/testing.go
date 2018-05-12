@@ -1,15 +1,15 @@
 package main
 
 import (
-	"net/http"
-	"flag"
-	"fmt"
 	"bytes"
 	"encoding/json"
+	"flag"
+	"fmt"
 	"io/ioutil"
+	"math/rand"
+	"net/http"
 	"net/url"
 	"sync"
-	"math/rand"
 )
 
 var port int
@@ -223,7 +223,7 @@ func testDatastructures() {
 	var datas []YoutubeSong
 	for i := 0; i < 100; i++ {
 		datas = append(datas, YoutubeSong{
-			id:fmt.Sprintf("someid%d", i),
+			id:    fmt.Sprintf("someid%d", i),
 			count: rand.Intn(1)})
 	}
 

@@ -2,7 +2,8 @@ package ytdl
 
 import (
 	"sort"
-	"../utils"
+
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 // FormatList is a slice of formats with filtering functionality

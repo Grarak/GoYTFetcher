@@ -1,21 +1,22 @@
 package database
 
 import (
-	"sync"
-	"os/exec"
-	"regexp"
-	"strings"
-	"sort"
 	"bufio"
 	"fmt"
 	"net/http"
+	"os/exec"
+	"regexp"
+	"sort"
+	"strings"
+	"sync"
 
-	"../utils"
 	"net/url"
-	"../ytdl"
-	"unicode"
 	"strconv"
-	"../logger"
+	"unicode"
+
+	"github.com/Grarak/GoYTFetcher/logger"
+	"github.com/Grarak/GoYTFetcher/utils"
+	"github.com/Grarak/GoYTFetcher/ytdl"
 )
 
 var searchWebSiteRegex = regexp.MustCompile("href=\"/watch\\?v=([a-z_A-Z0-9\\-]{11})\"")
@@ -61,7 +62,7 @@ type YoutubeSearchResult struct {
 	Duration  string `json:"duration"`
 }
 
-func (youtubeSearch *YoutubeSearch) search(youtubeDB *YoutubeDB) ([]string, error) {
+func (youtubeSearch *YoutubeSearch) search(youtubeDB *youtubeDBImpl) ([]string, error) {
 	youtubeSearch.rwLock.Lock()
 	defer youtubeSearch.rwLock.Unlock()
 
@@ -79,7 +80,7 @@ func (youtubeSearch *YoutubeSearch) search(youtubeDB *YoutubeDB) ([]string, erro
 	return results, err
 }
 
-func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(youtubeDB *YoutubeDB) ([]string, error) {
+func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(youtubeDB *youtubeDBImpl) ([]string, error) {
 	searchUrl := "https://www.youtube.com/results?"
 	query := url.Values{}
 	query.Set("search_query", youtubeSearch.query)
@@ -87,7 +88,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(youtubeDB *YoutubeDB) (
 	return parseYoutubeSearchFromURL(searchUrl+query.Encode(), searchWebSiteRegex)
 }
 
-func (youtubeSearch *YoutubeSearch) getSearchFromApi(youtubeDB *YoutubeDB) ([]string, error) {
+func (youtubeSearch *YoutubeSearch) getSearchFromApi(youtubeDB *youtubeDBImpl) ([]string, error) {
 	searchUrl := "https://www.googleapis.com/youtube/v3/search?"
 	query := url.Values{}
 	query.Set("q", youtubeSearch.query)
@@ -161,7 +162,7 @@ func parseYoutubeSearchFromURL(searchUrl string, matcher *regexp.Regexp) ([]stri
 	return ids, nil
 }
 
-func (youtubeDB *YoutubeDB) getYoutubeVideoInfoFromYtdl(id string) (YoutubeSearchResult, error) {
+func (youtubeDB *youtubeDBImpl) getYoutubeVideoInfoFromYtdl(id string) (YoutubeSearchResult, error) {
 	info, err := ytdl.GetVideoInfoFromID(id)
 	if err != nil {
 		logger.E(fmt.Sprintf("Couldn't get %s, %v", id, err))
@@ -175,7 +176,7 @@ func (youtubeDB *YoutubeDB) getYoutubeVideoInfoFromYtdl(id string) (YoutubeSearc
 		utils.FormatMinutesSeconds(minutes, seconds)}, nil
 }
 
-func (youtubeDB *YoutubeDB) getYoutubeVideoInfoFromApi(id string) (YoutubeSearchResult, error) {
+func (youtubeDB *youtubeDBImpl) getYoutubeVideoInfoFromApi(id string) (YoutubeSearchResult, error) {
 	infoUrl := "https://www.googleapis.com/youtube/v3/videos?"
 	query := url.Values{}
 	query.Set("id", id)

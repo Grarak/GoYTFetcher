@@ -1,13 +1,15 @@
 package v1
 
 import (
-	"../../miniserver"
 	"net/http"
 
-	"../../database"
-	"../../utils"
+	"github.com/Grarak/GoYTFetcher/miniserver"
+
 	"strconv"
-	"../../logger"
+
+	"github.com/Grarak/GoYTFetcher/database"
+	"github.com/Grarak/GoYTFetcher/logger"
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 func usersSignUp(client *miniserver.Client) miniserver.Response {
@@ -16,7 +18,7 @@ func usersSignUp(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
+	usersDB := database.GetDefaultDatabase().UsersDB
 	user, code := usersDB.AddUser(request)
 	if code == utils.StatusNoError {
 		logger.I(client.IPAddr + ": " + "Created new user " + user.Name)
@@ -32,7 +34,7 @@ func usersLogin(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
+	usersDB := database.GetDefaultDatabase().UsersDB
 	user, code := usersDB.GetUserWithPassword(request.Name, request.Password)
 	if code == utils.StatusNoError {
 		logger.I(client.IPAddr + ": " + user.Name + " logged in")
@@ -48,9 +50,8 @@ func usersList(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	if user, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *user.Verified {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	if user, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *user.Verified {
 		page, err := strconv.Atoi(client.Queries.Get("page"))
 		if err != nil {
 			page = 1
@@ -70,9 +71,8 @@ func usersSetVerification(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Admin {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Admin {
 		err = usersDB.SetVerificationUser(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
@@ -88,9 +88,8 @@ func usersDelete(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Admin {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Admin {
 		err = usersDB.DeleteUser(request)
 		if err != nil {
 			return client.CreateResponse(utils.StatusNoError)
@@ -106,9 +105,8 @@ func usersDeleteAll(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Admin {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Admin {
 		err = usersDB.DeleteAllNonVerifiedUsers(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
@@ -124,9 +122,8 @@ func usersResetPassword(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Admin {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Admin {
 		err = usersDB.ResetPasswordUser(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
@@ -142,7 +139,7 @@ func playlistList(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	playlistsDB := database.GetDatabase().PlaylistsDB
+	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
 	playlists, err := playlistsDB.GetPlaylists(request.ApiKey, false)
 	if err == nil {
 		return client.CreateJsonResponse(playlists)
@@ -157,10 +154,9 @@ func playlistListPublic(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	playlistsDB := database.GetDatabase().PlaylistsDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 
 		user, err := usersDB.FindUserByName(request.Name)
 		if err == nil {
@@ -180,10 +176,9 @@ func playlistCreate(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	playlistsDB := database.GetDatabase().PlaylistsDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 
 		err := playlistsDB.CreatePlaylist(request)
 		if err == nil {
@@ -200,7 +195,7 @@ func playlistDelete(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	playlistsDB := database.GetDatabase().PlaylistsDB
+	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
 	err = playlistsDB.DeletePlaylist(request)
 	if err == nil {
 		return client.CreateResponse(utils.StatusNoError)
@@ -215,7 +210,7 @@ func playlistSetPublic(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	playlistsDB := database.GetDatabase().PlaylistsDB
+	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
 	err = playlistsDB.SetPublic(request)
 	if err == nil {
 		return client.CreateResponse(utils.StatusNoError)
@@ -230,7 +225,7 @@ func playlistListIds(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	playlistsDB := database.GetDatabase().PlaylistsDB
+	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
 	ids, err := playlistsDB.GetPlaylistIds(request)
 	if err == nil {
 		return client.CreateJsonResponse(ids)
@@ -245,10 +240,9 @@ func playlistListIdsPublic(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	playlistsDB := database.GetDatabase().PlaylistsDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 		user, err := usersDB.FindUserByName(request.Name)
 		if err == nil {
 			playlist := database.Playlist{ApiKey: user.ApiKey, Name: request.Playlist}
@@ -270,10 +264,9 @@ func playlistAddId(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	playlistsDB := database.GetDatabase().PlaylistsDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 		err = playlistsDB.AddIdToPlaylist(request)
 		if err != nil {
 			return client.CreateResponse(utils.StatusPlaylistIdAlreadyExists)
@@ -293,10 +286,9 @@ func playlistDeleteId(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	playlistsDB := database.GetDatabase().PlaylistsDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 		err := playlistsDB.DeleteIdFromPlaylist(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
@@ -312,10 +304,9 @@ func playlistSetIds(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	usersDB := database.GetDatabase().UsersDB
-	playlistsDB := database.GetDatabase().PlaylistsDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	usersDB := database.GetDefaultDatabase().UsersDB
+	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 		err := playlistsDB.SetPlaylistIds(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
@@ -331,10 +322,9 @@ func historyAdd(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	userDB := database.GetDatabase().UsersDB
-	historiesDB := database.GetDatabase().HistoriesDB
-	if requester, err := userDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	userDB := database.GetDefaultDatabase().UsersDB
+	historiesDB := database.GetDefaultDatabase().HistoriesDB
+	if requester, err := userDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 		err = historiesDB.AddHistory(request.ApiKey, request.Id)
 		if err == nil {
 			logger.I(client.IPAddr + ": " + requester.Name +
@@ -352,7 +342,7 @@ func historyList(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
-	historiesDB := database.GetDatabase().HistoriesDB
+	historiesDB := database.GetDefaultDatabase().HistoriesDB
 	histories, err := historiesDB.GetHistory(request.ApiKey)
 	if err == nil {
 		return client.CreateJsonResponse(histories)

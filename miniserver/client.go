@@ -1,11 +1,12 @@
 package miniserver
 
 import (
-	"net/http"
 	"io/ioutil"
+	"net/http"
 	"net/url"
-	"../utils"
 	"strings"
+
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 type Client struct {
@@ -20,8 +21,7 @@ func newClient(request *http.Request) *Client {
 
 	body, _ := ioutil.ReadAll(request.Body)
 	ipAddr := request.RemoteAddr[:strings.LastIndex(request.RemoteAddr, ":")]
-	if cfConnectionIP := request.Header.Get("Cf-Connecting-Ip");
-		!utils.StringIsEmpty(cfConnectionIP) {
+	if cfConnectionIP := request.Header.Get("Cf-Connecting-Ip"); !utils.StringIsEmpty(cfConnectionIP) {
 		ipAddr = cfConnectionIP
 	}
 

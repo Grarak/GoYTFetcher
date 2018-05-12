@@ -2,13 +2,14 @@ package logger
 
 import (
 	"fmt"
-	"github.com/op/go-logging"
-	"os"
-	"../utils"
-	"sync"
 	"io/ioutil"
+	"os"
 	"regexp"
 	"strconv"
+	"sync"
+
+	"github.com/Grarak/GoYTFetcher/utils"
+	"github.com/op/go-logging"
 )
 
 const logFileName = utils.LOG_DIR + utils.LOG_EXTENSION

@@ -1,15 +1,16 @@
 package database
 
 import (
-	"sync"
 	"io/ioutil"
 	"os"
+	"sync"
 
-	"../utils"
 	"crypto/aes"
-	"../logger"
-	"../ytdl"
 	"net/url"
+
+	"github.com/Grarak/GoYTFetcher/logger"
+	"github.com/Grarak/GoYTFetcher/utils"
+	"github.com/Grarak/GoYTFetcher/ytdl"
 )
 
 type YoutubeSong struct {
@@ -71,7 +72,7 @@ func (youtubeSong *YoutubeSong) getGoogleUrl() string {
 	return youtubeSong.googleUrl
 }
 
-func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
+func (youtubeSong *YoutubeSong) download(youtubeDB *youtubeDBImpl) error {
 	youtubeSong.setDownloading(true)
 	youtubeSong.rwLock.Lock()
 	defer youtubeSong.rwLock.Unlock()
