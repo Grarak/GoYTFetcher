@@ -14,6 +14,7 @@ var v1Apis = map[string]apiHandle{
 	"youtube": v1.HandleYoutubeV1,
 }
 
+// GetResponse makes the request and gets the response from the server
 func GetResponse(version, api string, args []string, client *miniserver.Client) miniserver.Response {
 	var response apiHandle
 	switch version {

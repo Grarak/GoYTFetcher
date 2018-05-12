@@ -92,7 +92,7 @@ func (youtubeSong *YoutubeSong) getDownloadUrl() (string, error) {
 	return youtubeSong.downloadUrl, nil
 }
 
-func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
+func (youtubeSong *YoutubeSong) download(youtubeDB *youtubeDBImpl) error {
 	youtubeSong.setDownloading(true)
 
 	info, err := ytdl.GetVideoDownloadInfo(youtubeSong.id)
