@@ -24,11 +24,10 @@ $ make
 ## Usage
 
 ```
-$ ./ytfetcher [-p Port] [-yt Youtube API key] [-host Hostname]
+$ ./ytfetcher [-p Port] [-yt Youtube API key]
 ```
 
-All flags are optional. When no port is given it will use 6713 and when there is no hostname
-then it will use the local IPv4 address.
+All flags are optional. When no port is given it will use 6713.
 
 Youtube API key is used for searching and getting video information. When no key is given then
 it will rely on youtube-dl. Only feature which totally depends on the Youtube API is getting

@@ -49,21 +49,15 @@ func main() {
 	}
 
 	var port int
-	var host string
 	var ytKey string
 	flag.IntVar(&port, "p", 6713, "Which port to use")
-	flag.StringVar(&host, "host", "", "Hostname (default: local IP)")
 	flag.StringVar(&ytKey, "yt", "", "Youtube Api key")
 	flag.Parse()
-
-	if utils.StringIsEmpty(host) {
-		host = fmt.Sprintf("%s:%d", utils.GetOutboundIP(), port)
-	}
 
 	utils.MkDir(utils.DATABASE)
 	utils.MkDir(utils.YOUTUBE_DIR)
 
-	databaseInstance := database.GetDatabase(host, utils.GenerateRandom(16), ytKey)
+	databaseInstance := database.GetDatabase(utils.GenerateRandom(16), ytKey)
 
 	server := miniserver.NewServer(port)
 

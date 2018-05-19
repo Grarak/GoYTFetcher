@@ -26,7 +26,7 @@ func createUsers() {
 			"12345")
 		wait.Done()
 	}
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 1000; i++ {
 		wait.Add(1)
 		go signup(i)
 	}

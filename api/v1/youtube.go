@@ -37,10 +37,10 @@ func youtubeFetch(client *miniserver.Client) miniserver.Response {
 			query := url.Values{}
 			query.Set("id", u)
 
-			if purl, perr := url.Parse(u); perr == nil {
+			if purl, err := url.Parse(u); err == nil {
 				host := purl.Host
 				if !strings.HasPrefix(host, "http") {
-					host = "http://" + host
+					host = "http://" + client.Host
 				}
 				u = host + strings.Replace(
 					client.Url, "fetch", "get", 1) + "?" + query.Encode()

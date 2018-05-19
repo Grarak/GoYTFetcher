@@ -22,10 +22,10 @@ type Database struct {
 }
 
 func GetDefaultDatabase() *Database {
-	return GetDatabase("", nil, "")
+	return GetDatabase(nil, "")
 }
 
-func GetDatabase(host string, key []byte, ytKey string) *Database {
+func GetDatabase(key []byte, ytKey string) *Database {
 	singletonLock.Lock()
 	defer singletonLock.Unlock()
 
@@ -50,7 +50,7 @@ func GetDatabase(host string, key []byte, ytKey string) *Database {
 	historiesDB, err := newHistoriesDB(db, rwLock)
 	utils.Panic(err)
 
-	youtubeDB, err := newYoutubeDB(host, key, ytKey)
+	youtubeDB, err := newYoutubeDB(key, ytKey)
 	utils.Panic(err)
 
 	databaseInstance = &Database{

@@ -34,7 +34,6 @@ type YouTubeDB interface {
 }
 
 type youtubeDBImpl struct {
-	Host      string
 	randomKey []byte
 
 	ytKey     string
@@ -56,7 +55,7 @@ type youtubeDBImpl struct {
 	chartsLastFetched time.Time
 }
 
-func newYoutubeDB(host string, key []byte, ytKey string) (YouTubeDB, error) {
+func newYoutubeDB(key []byte, ytKey string) (YouTubeDB, error) {
 	youtubeDL, err := exec.LookPath(utils.YOUTUBE_DL)
 	if err != nil {
 		return nil, err
@@ -67,7 +66,6 @@ func newYoutubeDB(host string, key []byte, ytKey string) (YouTubeDB, error) {
 		songsRanking:    new(rankingTree),
 		searchesRanking: new(rankingTree),
 		idRanking:       new(rankingTree),
-		Host:            host,
 		randomKey:       key,
 		ytKey:           ytKey,
 	}

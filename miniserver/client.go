@@ -10,10 +10,10 @@ import (
 )
 
 type Client struct {
-	Url, Method, IPAddr string
-	Request             []byte
-	Header              http.Header
-	Queries             url.Values
+	Host, Url, Method, IPAddr string
+	Request                   []byte
+	Header                    http.Header
+	Queries                   url.Values
 }
 
 func newClient(request *http.Request) *Client {
@@ -26,6 +26,7 @@ func newClient(request *http.Request) *Client {
 	}
 
 	return &Client{
+		request.Host,
 		request.URL.Path,
 		request.Method,
 		ipAddr,
