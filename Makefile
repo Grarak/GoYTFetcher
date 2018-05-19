@@ -1,17 +1,12 @@
-.PHONY: all ytfetcher ytfetcher_test
+.PHONY: all install test
 
 all:
-	make ytfetcher
-	make ytfetcher_test
+	go build -ldflags "-s -w" -i -o GoYTFetcher main.go
 
-ytfetcher:
-	go get -u github.com/mattn/go-sqlite3
-	go get -u golang.org/x/crypto/pbkdf2
-	go get -u github.com/PuerkitoBio/goquery
-	go get -u github.com/op/go-logging
-	go build -i -o ytfetcher main.go
+install:
+	go install -ldflags "-s" -i
 
-ytfetcher_test:
+test:
 	go build -i -o ytfetcher_test testing/*.go
 
 clean:

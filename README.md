@@ -16,10 +16,12 @@ It also comes with a simple login system, so you can manage users easily.
 #### Build
 
 ```
-$ git clone https://github.com/Grarak/GoYTFetcher
-$ cd GoYTFetcher
-$ make
+$ go get github.com/Grarak/GoYTFetcher
+$ cd $GOPATH/src/github.com/Grarak/GoYTFetcher
+$ make install
 ```
+
+Compiled executable should be in $GOPATH/bin. 
 
 ## Usage
 
