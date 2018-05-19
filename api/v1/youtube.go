@@ -42,7 +42,8 @@ func youtubeFetch(client *miniserver.Client) miniserver.Response {
 			if !strings.HasPrefix(host, "http") {
 				host = "http://" + host
 			}
-			u = host + "/api/v1/youtube/get?" + query.Encode()
+			u = host + strings.Replace(
+				client.Url, "fetch", "get", 1) + "?" + query.Encode()
 		}
 		response := client.ResponseBody(u)
 		response.SetHeader("ytfetcher-id", id)
@@ -68,7 +69,7 @@ func youtubeGet(client *miniserver.Client) miniserver.Response {
 		data, err := youtubeSong.Read()
 		if err == nil {
 			response := client.ResponseBodyBytes(data)
-			response.SetContentType(miniserver.ContentOgg)
+			response.SetContentType(miniserver.ContentWebm)
 			return response
 		}
 	}

@@ -104,23 +104,25 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, string, error) 
 		youtubeSong.increaseCount()
 	}
 
+	youtubeSong.songLock.Lock()
+	defer youtubeSong.songLock.Unlock()
+
 	encryptedId := youtubeSong.getEncryptedId(youtubeDB.randomKey)
-	var url string
+	var link string
 	if youtubeSong.isDownloaded() {
-		url = encryptedId
+		link = encryptedId
 	} else if youtubeSong.IsDownloading() {
-		url = youtubeSong.getGoogleUrl()
+		link, _ = youtubeSong.getDownloadUrl()
 	} else if !loaded {
-		youtubeSong.googleUrlLock.Lock()
 		go func() {
 			youtubeDB.deleteCacheLock.RLock()
 			defer youtubeDB.deleteCacheLock.RUnlock()
 			youtubeSong.download(youtubeDB)
 		}()
-		url = youtubeSong.getGoogleUrl()
+		link, _ = youtubeSong.getDownloadUrl()
 	}
 
-	if utils.StringIsEmpty(url) {
+	if utils.StringIsEmpty(link) {
 		youtubeDB.songs.Delete(youtubeSong.id)
 		return "", "", fmt.Errorf("failed to get url")
 	}
@@ -142,7 +144,7 @@ func (youtubeDB *YoutubeDB) FetchYoutubeSong(id string) (string, string, error) 
 			youtubeDB.deleteCacheLock.Unlock()
 		}
 	}
-	return url, encryptedId, nil
+	return link, encryptedId, nil
 }
 
 func (youtubeDB *YoutubeDB) GetYoutubeSearch(searchQuery string) ([]YoutubeSearchResult, error) {

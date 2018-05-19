@@ -10,13 +10,14 @@ import (
 	"../logger"
 	"../ytdl"
 	"net/url"
+	"time"
 )
 
 type YoutubeSong struct {
 	id string
 
-	googleUrl     string
-	googleUrlLock sync.RWMutex
+	downloadUrl     string
+	downloadUrlTime time.Time
 
 	count       int
 	downloaded  bool
@@ -27,8 +28,9 @@ type YoutubeSong struct {
 
 	encryptedId string
 
-	valuesLock sync.RWMutex
-	rwLock     sync.RWMutex
+	songLock  sync.Mutex
+	stateLock sync.RWMutex
+	readLock  sync.RWMutex
 }
 
 func newYoutubeSong(id string) *YoutubeSong {
@@ -36,51 +38,46 @@ func newYoutubeSong(id string) *YoutubeSong {
 }
 
 func (youtubeSong *YoutubeSong) isDownloaded() bool {
-	youtubeSong.valuesLock.RLock()
-	defer youtubeSong.valuesLock.RUnlock()
+	youtubeSong.stateLock.RLock()
+	defer youtubeSong.stateLock.RUnlock()
 	return youtubeSong.downloaded
 }
 
 func (youtubeSong *YoutubeSong) setDownloaded(downloaded bool) {
-	youtubeSong.valuesLock.Lock()
-	defer youtubeSong.valuesLock.Unlock()
+	youtubeSong.stateLock.Lock()
+	defer youtubeSong.stateLock.Unlock()
 	youtubeSong.downloaded = downloaded
 }
 
 func (youtubeSong *YoutubeSong) IsDownloading() bool {
-	youtubeSong.valuesLock.RLock()
-	defer youtubeSong.valuesLock.RUnlock()
+	youtubeSong.stateLock.RLock()
+	defer youtubeSong.stateLock.RUnlock()
 	return youtubeSong.downloading
 }
 
 func (youtubeSong *YoutubeSong) setDownloading(downloading bool) {
-	youtubeSong.valuesLock.Lock()
-	defer youtubeSong.valuesLock.Unlock()
+	youtubeSong.stateLock.Lock()
+	defer youtubeSong.stateLock.Unlock()
 	youtubeSong.downloading = downloading
 }
 
 func (youtubeSong *YoutubeSong) Read() ([]byte, error) {
-	youtubeSong.rwLock.RLock()
-	defer youtubeSong.rwLock.RUnlock()
-	return ioutil.ReadFile(youtubeSong.getFilePath())
+	youtubeSong.readLock.RLock()
+	defer youtubeSong.readLock.RUnlock()
+	return ioutil.ReadFile(youtubeSong.filePath)
 }
 
-func (youtubeSong *YoutubeSong) getGoogleUrl() string {
-	youtubeSong.googleUrlLock.RLock()
-	defer youtubeSong.googleUrlLock.RUnlock()
-	return youtubeSong.googleUrl
-}
-
-func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
-	youtubeSong.setDownloading(true)
-	youtubeSong.rwLock.Lock()
-	defer youtubeSong.rwLock.Unlock()
+func (youtubeSong *YoutubeSong) getDownloadUrl() (string, error) {
+	currentTime := time.Now()
+	if currentTime.Sub(youtubeSong.downloadUrlTime).Hours() < 1 &&
+		!utils.StringIsEmpty(youtubeSong.downloadUrl) {
+		return youtubeSong.downloadUrl, nil
+	}
 
 	info, err := ytdl.GetVideoDownloadInfo(youtubeSong.id)
 	if err != nil {
 		defer youtubeSong.setDownloading(false)
-		defer youtubeSong.googleUrlLock.Unlock()
-		return err
+		return "", err
 	}
 
 	var link *url.URL
@@ -89,20 +86,26 @@ func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
 	} else {
 		link, err = info.GetDownloadURLWorst()
 	}
+	youtubeSong.downloadUrl = link.String()
+	youtubeSong.downloadUrlTime = currentTime
+
+	return youtubeSong.downloadUrl, nil
+}
+
+func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
+	youtubeSong.setDownloading(true)
+
+	info, err := ytdl.GetVideoDownloadInfo(youtubeSong.id)
 	if err != nil {
-		defer youtubeSong.setDownloading(false)
-		defer youtubeSong.googleUrlLock.Unlock()
+		youtubeSong.setDownloading(false)
 		return err
 	}
-	youtubeSong.googleUrl = link.String()
-	youtubeSong.googleUrlLock.Unlock()
 
 	if info.VideoInfo.Duration.Minutes() <= 20 {
 		logger.I("Downloading " + info.VideoInfo.Title)
 		defer logger.I("Finished downloading " + info.VideoInfo.Title)
 
 		defer youtubeSong.setDownloading(false)
-		defer youtubeSong.setDownloaded(true)
 
 		path, err := info.VideoInfo.Download(utils.YOUTUBE_DIR, youtubeDB.youtubeDL)
 		if err != nil {
@@ -111,7 +114,9 @@ func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
 		youtubeSong.filePath = path
 
 		if youtubeSong.deleted {
-			os.Remove(youtubeSong.getFilePath())
+			os.Remove(youtubeSong.filePath)
+		} else {
+			defer youtubeSong.setDownloaded(true)
 		}
 		return nil
 	}
@@ -119,15 +124,14 @@ func (youtubeSong *YoutubeSong) download(youtubeDB *YoutubeDB) error {
 	return nil
 }
 
-func (youtubeSong *YoutubeSong) delete() error {
-	youtubeSong.rwLock.Lock()
-	defer youtubeSong.rwLock.Unlock()
+func (youtubeSong *YoutubeSong) delete() {
+	youtubeSong.readLock.Lock()
+	defer youtubeSong.readLock.Unlock()
 	youtubeSong.deleted = true
-	return os.Remove(youtubeSong.getFilePath())
-}
 
-func (youtubeSong *YoutubeSong) getFilePath() string {
-	return youtubeSong.filePath
+	if youtubeSong.isDownloaded() {
+		os.Remove(youtubeSong.filePath)
+	}
 }
 
 func (youtubeSong *YoutubeSong) getEncryptedId(key []byte) string {
@@ -142,8 +146,8 @@ func (youtubeSong *YoutubeSong) getEncryptedId(key []byte) string {
 }
 
 func (youtubeSong *YoutubeSong) increaseCount() {
-	youtubeSong.valuesLock.Lock()
-	defer youtubeSong.valuesLock.Unlock()
+	youtubeSong.stateLock.Lock()
+	defer youtubeSong.stateLock.Unlock()
 	youtubeSong.count++
 }
 

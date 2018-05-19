@@ -16,7 +16,7 @@ const (
 	ContentCss        = "text/css"
 	ContentXIcon      = "image/x-icon"
 	ContentSVG        = "image/svg+xml"
-	ContentOgg        = "audio/vorbis"
+	ContentWebm       = "audio/webm"
 )
 
 type MiniServer struct {
