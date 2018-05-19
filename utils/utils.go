@@ -1,13 +1,13 @@
 package utils
 
 import (
-	"os"
-	"strconv"
 	"fmt"
-	"net"
-	"log"
-	"os/exec"
 	"io/ioutil"
+	"log"
+	"net"
+	"os"
+	"os/exec"
+	"strconv"
 )
 
 func Panic(err error) {

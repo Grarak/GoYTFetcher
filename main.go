@@ -2,19 +2,19 @@ package main
 
 import (
 	"flag"
-	"os/signal"
-	"os"
 	"fmt"
-
-	"./logger"
-	"./miniserver"
+	"net/http"
+	"os"
+	"os/exec"
+	"os/signal"
 	"strconv"
 	"strings"
-	"./api"
-	"./utils"
-	"./database"
-	"net/http"
-	"os/exec"
+
+	"github.com/Grarak/GoYTFetcher/api"
+	"github.com/Grarak/GoYTFetcher/database"
+	"github.com/Grarak/GoYTFetcher/logger"
+	"github.com/Grarak/GoYTFetcher/miniserver"
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 func clientHandler(client *miniserver.Client) miniserver.Response {

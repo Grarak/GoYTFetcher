@@ -1,11 +1,11 @@
 package miniserver
 
 import (
-	"net/http"
 	"net"
+	"net/http"
 	"strconv"
 
-	"../utils"
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 const (

@@ -2,10 +2,9 @@ package database
 
 import (
 	"encoding/json"
-	"net/http"
-	"io/ioutil"
-
 	"fmt"
+	"io/ioutil"
+	"net/http"
 )
 
 type YoutubeThumbnail struct {

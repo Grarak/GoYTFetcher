@@ -1,10 +1,10 @@
 package miniserver
 
 import (
-	"net/http"
-	"strings"
-	"strconv"
 	"fmt"
+	"net/http"
+	"strconv"
+	"strings"
 )
 
 type Response interface {

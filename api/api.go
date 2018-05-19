@@ -1,9 +1,10 @@
 package api
 
 import (
-	"../miniserver"
-	"./v1"
 	"strings"
+
+	"github.com/Grarak/GoYTFetcher/api/v1"
+	"github.com/Grarak/GoYTFetcher/miniserver"
 )
 
 type apiHandle func(path string, client *miniserver.Client) miniserver.Response

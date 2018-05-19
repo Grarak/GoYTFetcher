@@ -1,16 +1,16 @@
 package database
 
 import (
-	"sync"
-	"io/ioutil"
-	"os"
-
-	"../utils"
 	"crypto/aes"
-	"../logger"
-	"../ytdl"
+	"io/ioutil"
 	"net/url"
+	"os"
+	"sync"
 	"time"
+
+	"github.com/Grarak/GoYTFetcher/logger"
+	"github.com/Grarak/GoYTFetcher/utils"
+	"github.com/Grarak/GoYTFetcher/ytdl"
 )
 
 type YoutubeSong struct {

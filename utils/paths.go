@@ -1,8 +1,8 @@
 package utils
 
 const (
-	LOG_DIR = "log"
-	LOG_PREFIX = "log"
+	LOG_DIR       = "log"
+	LOG_PREFIX    = "log"
 	LOG_EXTENSION = ".txt"
 
 	FILES       = "files"

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"sync"
 	"fmt"
 	"strconv"
+	"sync"
 )
 
 type YoutubeSong struct {

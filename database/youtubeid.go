@@ -2,7 +2,8 @@ package database
 
 import (
 	"sync"
-	"../utils"
+
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 type YoutubeId struct {

@@ -1,13 +1,14 @@
 package v1
 
 import (
-	"../../miniserver"
-	"../../database"
-	"../../utils"
 	"net/http"
-	"strings"
-	"../../logger"
 	"net/url"
+	"strings"
+
+	"github.com/Grarak/GoYTFetcher/database"
+	"github.com/Grarak/GoYTFetcher/logger"
+	"github.com/Grarak/GoYTFetcher/miniserver"
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 func youtubeFetch(client *miniserver.Client) miniserver.Response {
@@ -17,8 +18,7 @@ func youtubeFetch(client *miniserver.Client) miniserver.Response {
 	}
 
 	usersDB := database.GetDatabase().UsersDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 
 		logger.I(client.IPAddr + ": " + requester.Name + " fetching " + request.Id)
 		youtubeDB := database.GetDatabase().YoutubeDB
@@ -84,8 +84,7 @@ func youtubeSearch(client *miniserver.Client) miniserver.Response {
 	}
 
 	usersDB := database.GetDatabase().UsersDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 
 		logger.I(client.IPAddr + ": " + requester.Name + " searching " + request.SearchQuery)
 		results, err := database.GetDatabase().YoutubeDB.GetYoutubeSearch(request.SearchQuery)
@@ -105,8 +104,7 @@ func youtubeGetInfo(client *miniserver.Client) miniserver.Response {
 	}
 
 	usersDB := database.GetDatabase().UsersDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 		info, err := database.GetDatabase().YoutubeDB.GetYoutubeInfo(request.Id)
 		if err != nil {
 			return client.CreateResponse(utils.StatusYoutubeGetInfoFailure)
@@ -124,8 +122,7 @@ func youtubeGetCharts(client *miniserver.Client) miniserver.Response {
 	}
 
 	usersDB := database.GetDatabase().UsersDB
-	if requester, err := usersDB.FindUserByApiKey(request.ApiKey);
-		err == nil && *requester.Verified {
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
 		info, err := database.GetDatabase().YoutubeDB.GetYoutubeCharts()
 		if err != nil {
 			return client.CreateResponse(utils.StatusYoutubeGetChartsFailure)
