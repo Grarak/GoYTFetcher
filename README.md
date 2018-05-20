@@ -1,4 +1,4 @@
-# GOYTFetcher [![Build Status][travis-url]][travis-svg] [![][license-svg]][license-url] [![][report-card-svg]](report-card-url)
+# GOYTFetcher [![][travis-url]][travis-svg] [![][license-svg]][license-url] [![][report-card-svg]][report-card-url]
 
 GoYTFetcher is a server application written in Golang to serve Youtube videos as audio files
 through HTTP.

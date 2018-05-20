@@ -299,6 +299,13 @@ func (info *VideoDownloadInfo) GetDownloadURLWorst() (*url.URL, error) {
 func (info *VideoInfo) GetThumbnailURL(quality ThumbnailQuality) *url.URL {
 	u, _ := url.Parse(fmt.Sprintf("http://img.youtube.com/vi/%s/%s.jpg",
 		info.ID, quality))
+
+	resp, err := http.Get(u.String())
+	defer resp.Body.Close()
+	if err != nil || resp.StatusCode != http.StatusOK {
+		u, _ = url.Parse(fmt.Sprintf("https://i.ytimg.com/vi/%s/%s.jpg",
+			info.ID, quality))
+	}
 	return u
 }
 
