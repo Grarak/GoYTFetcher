@@ -1,4 +1,4 @@
-# GOYTFetcher [![Build Status][travis-url]][travis-svg] [![][license-svg]][license-url]
+# GOYTFetcher [![Build Status][travis-url]][travis-svg] [![][license-svg]][license-url] [![][report-card-svg]](report-card-url)
 
 GoYTFetcher is a server application written in Golang to serve Youtube videos as audio files
 through HTTP.
@@ -26,7 +26,7 @@ Compiled executable should be in $GOPATH/bin.
 ## Usage
 
 ```
-$ ./ytfetcher [-p Port] [-yt Youtube API key]
+$ ./GoYTFetcher [-p Port] [-yt Youtube API key]
 ```
 
 All flags are optional. When no port is given it will use 6713.
@@ -61,3 +61,6 @@ for API calls.
 
 [license-url]: https://github.com/Grarak/GoYTFetcher/blob/master/LICENSE
 [license-svg]: https://img.shields.io/badge/license-MIT-blue.svg
+
+[report-card-url]: https://goreportcard.com/report/github.com/Grarak/GoYTFetcher
+[report-card-svg]: https://goreportcard.com/badge/github.com/Grarak/GoYTFetcher
