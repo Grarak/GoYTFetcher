@@ -106,6 +106,7 @@ func (youtubeDB *youtubeDBImpl) GetYoutubeSong(id string) (*YoutubeSong, error) 
 }
 
 func (youtubeDB *youtubeDBImpl) FetchYoutubeSong(id string) (string, string, error) {
+	id = strings.TrimSpace(id)
 	youtubeSong := newYoutubeSong(id)
 	loadedSong, loaded := youtubeDB.songs.LoadOrStore(id, youtubeSong)
 	if loaded {
@@ -198,6 +199,7 @@ func (youtubeDB *youtubeDBImpl) GetYoutubeSearch(searchQuery string) ([]YoutubeS
 }
 
 func (youtubeDB *youtubeDBImpl) GetYoutubeInfo(id string) (YoutubeSearchResult, error) {
+	id = strings.TrimSpace(id)
 	if utils.StringIsEmpty(id) {
 		return YoutubeSearchResult{}, fmt.Errorf("id is empty")
 	}

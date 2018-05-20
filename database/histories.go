@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 	"time"
+	"strings"
 )
 
 const TableHistories = "histories"
@@ -42,6 +43,7 @@ func newHistoriesDB(db *sql.DB, rwLock *sync.RWMutex) (*HistoriesDB, error) {
 }
 
 func (historiesDB *HistoriesDB) AddHistory(apiKey, id string) error {
+	id = strings.TrimSpace(id)
 	historiesDB.rwLock.Lock()
 	defer historiesDB.rwLock.Unlock()
 
