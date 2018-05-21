@@ -131,20 +131,20 @@ func parseVideoInfoFromHTML(id string, html []byte) (*VideoDownloadInfo, error) 
 
 	inf, ok := jsonConfig["args"].(map[string]interface{})
 	if !ok {
-		return nil, fmt.Errorf("error no args in json %s", id)
+		return nil, fmt.Errorf("%s: error no args in json", id)
 	}
 	if status, ok := inf["status"].(string); ok && status == "fail" {
-		return nil, fmt.Errorf("error %d:%s", inf["errorcode"], inf["reason"])
+		return nil, fmt.Errorf("%s: error %d:%s", id, inf["errorcode"], inf["reason"])
 	}
 
 	if length, ok := inf["length_seconds"].(string); ok {
 		if duration, err := strconv.ParseInt(length, 10, 64); err == nil {
 			info.VideoInfo.Duration = time.Second * time.Duration(duration)
 		} else {
-			logger.I(fmt.Sprintf("Unable to parse duration string: %s", length))
+			logger.I(fmt.Sprintf(id+": Unable to parse duration string: %s", length))
 		}
 	} else {
-		logger.E("Unable to extract duration")
+		logger.E(id + ": Unable to extract duration")
 	}
 
 	info.htmlPlayerFile = jsonConfig["assets"].(map[string]interface{})["js"].(string)
@@ -175,10 +175,10 @@ func parseVideoInfoFromHTML(id string, html []byte) (*VideoDownloadInfo, error) 
 				}
 				formats = append(formats, format)
 			} else {
-				logger.I(fmt.Sprintf("No metadata found for itag: %d, skipping...", itag))
+				logger.I(fmt.Sprintf(id+": No metadata found for itag: %d, skipping...", itag))
 			}
 		} else {
-			logger.I(fmt.Sprintf("Unable to format string %s", err.Error()))
+			logger.I(fmt.Sprintf(id+": Unable to format string %s", err.Error()))
 		}
 	}
 

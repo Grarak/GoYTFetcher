@@ -124,17 +124,19 @@ func (youtubeDB *youtubeDBImpl) FetchYoutubeSong(id string) (string, string, err
 	} else if youtubeSong.IsDownloading() {
 		link, _ = youtubeSong.getDownloadUrl()
 	} else if !loaded {
-		go func() {
-			youtubeDB.deleteCacheLock.RLock()
-			defer youtubeDB.deleteCacheLock.RUnlock()
-			youtubeSong.download(youtubeDB)
-		}()
 		link, _ = youtubeSong.getDownloadUrl()
+		if !utils.StringIsEmpty(link) {
+			go func() {
+				youtubeDB.deleteCacheLock.RLock()
+				defer youtubeDB.deleteCacheLock.RUnlock()
+				youtubeSong.download(youtubeDB)
+			}()
+		}
 	}
 
 	if utils.StringIsEmpty(link) {
 		youtubeDB.songs.Delete(youtubeSong.id)
-		return "", "", fmt.Errorf("failed to get url")
+		return "", "", fmt.Errorf("%s: failed to get url", youtubeSong.id)
 	}
 
 	youtubeDB.songsRanking.delete(*youtubeSong)
