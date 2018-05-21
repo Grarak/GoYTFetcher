@@ -21,7 +21,7 @@ $ cd $GOPATH/src/github.com/Grarak/GoYTFetcher
 $ make install
 ```
 
-Compiled executable should be in $GOPATH/bin. 
+Compiled executable should be in $GOPATH/bin.
 
 ## Usage
 

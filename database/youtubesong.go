@@ -86,6 +86,10 @@ func (youtubeSong *YoutubeSong) getDownloadUrl() (string, error) {
 	} else {
 		link, err = info.GetDownloadURLWorst()
 	}
+	if err != nil {
+		return "", err
+	}
+
 	youtubeSong.downloadUrl = link.String()
 	youtubeSong.downloadUrlTime = currentTime
 
