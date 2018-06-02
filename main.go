@@ -19,7 +19,7 @@ import (
 
 func clientHandler(client *miniserver.Client) miniserver.Response {
 	args := strings.Split(client.Url, "/")[1:]
-	if len(args) >= 4 && args[0] == "api" {
+	if len(args) >= 3 && args[0] == "api" {
 		return api.GetResponse(args[1], args[2], args[3:], client)
 	}
 

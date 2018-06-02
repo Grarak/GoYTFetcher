@@ -10,6 +10,7 @@ import (
 type apiHandle func(path string, client *miniserver.Client) miniserver.Response
 
 var v1Apis = map[string]apiHandle{
+	"info":    v1.HandleInfoV1,
 	"users":   v1.HandleUsersV1,
 	"youtube": v1.HandleYoutubeV1,
 }
