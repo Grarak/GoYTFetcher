@@ -18,6 +18,17 @@ import (
 )
 
 func clientHandler(client *miniserver.Client) miniserver.Response {
+	if client.Method == http.MethodOptions {
+		response := client.ResponseBody("ok")
+		response.SetHeader("Access-Control-Allow-Origin", "*")
+		response.SetHeader("Vary", "Origin")
+		response.SetHeader("Vary", "Access-Control-Request-Method")
+		response.SetHeader("Vary", "Access-Control-Request-Headers")
+		response.SetHeader("Access-Control-Allow-Headers", "Content-Type, Origin, Accept, token")
+		response.SetHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS")
+		return response
+	}
+
 	args := strings.Split(client.Url, "/")[1:]
 	if len(args) >= 3 && args[0] == "api" {
 		return api.GetResponse(args[1], args[2], args[3:], client)
