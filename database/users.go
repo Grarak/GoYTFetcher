@@ -23,8 +23,6 @@ type User struct {
 	PasswordHash string   `json:"-"`
 	Admin        *bool    `json:"admin,omitempty"`
 	Verified     *bool    `json:"verified,omitempty"`
-	Playlist     []string `json:"playlist,omitempty"`
-	History      []string `json:"history,omitempty"`
 }
 
 func NewUser(data []byte) (User, error) {
