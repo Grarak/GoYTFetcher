@@ -46,6 +46,7 @@ func (query querySort) Swap(i, j int) {
 }
 
 func newYoutubeSearch(searchQuery string) *YoutubeSearch {
+	searchQuery = strings.ToLower(searchQuery)
 	searchQuery = regexp.MustCompile("\\s+").ReplaceAllString(searchQuery, " ")
 	words := querySort(strings.Split(searchQuery, " "))
 	sort.Sort(words)
