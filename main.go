@@ -26,10 +26,12 @@ func clientHandler(client *miniserver.Client) miniserver.Response {
 	}
 
 	if !utils.StringIsEmpty(indexDir) {
-		if utils.FileExists(indexDir + client.Url) {
+		if client.Url != "/" && utils.FileExists(indexDir+client.Url) {
 			return client.ResponseFile(indexDir + client.Url)
 		}
-		return client.ResponseFile(indexDir + "/index.html")
+		if utils.FileExists(indexDir + "/index.html") {
+			return client.ResponseFile(indexDir + "/index.html")
+		}
 	}
 
 	response := client.ResponseBody("Not found")
