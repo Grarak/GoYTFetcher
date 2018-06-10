@@ -1,15 +1,16 @@
 package miniserver
 
 import (
+	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
-	"bytes"
-	"fmt"
+
 	"github.com/Grarak/GoYTFetcher/utils"
-	"io"
-	"os"
 )
 
 type SimpleResponse struct {

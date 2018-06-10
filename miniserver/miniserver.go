@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Grarak/GoYTFetcher/utils"
 	"strings"
+
+	"github.com/Grarak/GoYTFetcher/utils"
 )
 
 const (

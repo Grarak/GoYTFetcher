@@ -7,10 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"io"
+
 	"github.com/Grarak/GoYTFetcher/logger"
 	"github.com/Grarak/GoYTFetcher/utils"
 	"github.com/Grarak/GoYTFetcher/ytdl"
-	"io"
 )
 
 type YoutubeSong struct {
