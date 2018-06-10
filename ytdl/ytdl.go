@@ -256,44 +256,45 @@ func getDashManifest(urlString string) (formats []Format, err error) {
 	return formats, nil
 }
 
-func (info *VideoDownloadInfo) GetDownloadURL() (*url.URL, error) {
+func getDownloadFormat(audioEncoding string, formats FormatList) Format {
 	var downloadFormat Format
-	for _, format := range info.Formats.Best(FormatAudioEncodingKey) {
-		if format.AudioEncoding == "vorbis" && format.Resolution == "" {
+	for _, format := range formats {
+		if format.AudioEncoding == audioEncoding && format.Resolution == "" {
 			downloadFormat = format
 			break
 		}
 	}
 
 	if downloadFormat.AudioBitrate == 0 {
-		for _, format := range info.Formats.Best(FormatAudioEncodingKey) {
+		for _, format := range formats {
 			if format.Resolution == "" {
 				downloadFormat = format
 				break
 			}
 		}
 	}
-	return getDownloadURL(downloadFormat, info.htmlPlayerFile)
+
+	return downloadFormat
+}
+
+func (info *VideoDownloadInfo) GetDownloadURL() (*url.URL, error) {
+	vorbisFormat := getDownloadFormat("vorbis", info.Formats.Best(FormatAudioEncodingKey))
+	vorbisUrl, err := getDownloadURL(vorbisFormat, info.htmlPlayerFile)
+	if err != nil {
+		logger.E(info.VideoInfo.ID + ": Failed to get vorbis url")
+		return nil, err
+	}
+	return vorbisUrl, nil
 }
 
 func (info *VideoDownloadInfo) GetDownloadURLWorst() (*url.URL, error) {
-	var downloadFormat Format
-	for _, format := range info.Formats.Worst(FormatAudioEncodingKey) {
-		if format.AudioEncoding == "opus" && format.Resolution == "" {
-			downloadFormat = format
-			break
-		}
+	opusFormat := getDownloadFormat("opus", info.Formats.Worst(FormatAudioEncodingKey))
+	opusUrl, err := getDownloadURL(opusFormat, info.htmlPlayerFile)
+	if err != nil {
+		logger.E(info.VideoInfo.ID + ": Failed to get opus url")
+		return nil, err
 	}
-
-	if downloadFormat.AudioBitrate == 0 {
-		for _, format := range info.Formats.Worst(FormatAudioEncodingKey) {
-			if format.Resolution == "" {
-				downloadFormat = format
-				break
-			}
-		}
-	}
-	return getDownloadURL(downloadFormat, info.htmlPlayerFile)
+	return opusUrl, nil
 }
 
 func (info *VideoInfo) GetThumbnailURL(quality ThumbnailQuality) *url.URL {

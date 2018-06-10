@@ -156,6 +156,7 @@ func (youtubeDB *youtubeDBImpl) FetchYoutubeSong(id string) (string, string, err
 			youtubeDB.deleteCacheLock.Unlock()
 		}
 	}
+
 	return link, encryptedId, nil
 }
 

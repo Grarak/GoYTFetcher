@@ -64,13 +64,13 @@ func youtubeGet(client *miniserver.Client) miniserver.Response {
 		if err != nil {
 			return client.CreateResponse(utils.StatusYoutubeGetFailure)
 		}
-		if youtubeSong.IsDownloading() && strings.Contains(u, "googlevideo") {
+		if strings.Contains(u, "googlevideo") {
 			return miniserver.NewForwardResponse(u)
 		}
 
-		data, err := youtubeSong.Read()
+		reader, err := youtubeSong.Reader()
 		if err == nil {
-			response := client.ResponseBodyBytes(data)
+			response := client.ResponseReader(reader)
 			response.SetContentType(miniserver.ContentWebm)
 			return response
 		}

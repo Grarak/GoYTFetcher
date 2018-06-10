@@ -188,6 +188,9 @@ func (youtubeDB *youtubeDBImpl) getYoutubeVideoInfoFromApi(id string) (YoutubeSe
 		return YoutubeSearchResult{}, err
 	}
 
+	if len(response.Items) == 0 {
+		return YoutubeSearchResult{}, fmt.Errorf("no results")
+	}
 	item := response.Items[0]
 	return YoutubeSearchResult{item.Snippet.Title, id,
 		item.Snippet.Thumbnails.Default.Url,

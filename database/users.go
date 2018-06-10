@@ -16,13 +16,13 @@ import (
 const TableUsers = "users"
 
 type User struct {
-	ApiKey       string   `json:"apikey,omitempty"`
-	Name         string   `json:"name,omitempty"`
-	Password     string   `json:"password,omitempty"`
-	PasswordSalt string   `json:"-"`
-	PasswordHash string   `json:"-"`
-	Admin        *bool    `json:"admin,omitempty"`
-	Verified     *bool    `json:"verified,omitempty"`
+	ApiKey       string `json:"apikey,omitempty"`
+	Name         string `json:"name,omitempty"`
+	Password     string `json:"password,omitempty"`
+	PasswordSalt string `json:"-"`
+	PasswordHash string `json:"-"`
+	Admin        *bool  `json:"admin,omitempty"`
+	Verified     *bool  `json:"verified,omitempty"`
 }
 
 func NewUser(data []byte) (User, error) {

@@ -2,19 +2,41 @@ package miniserver
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
 
+	"bytes"
+	"fmt"
 	"github.com/Grarak/GoYTFetcher/utils"
+	"io"
+	"os"
 )
 
 type SimpleResponse struct {
-	file, contentType, serverDescription string
-	body                                 []byte
-	headers                              http.Header
-	statusCode                           int
+	contentType, serverDescription string
+	headers                        http.Header
+	statusCode                     int
+	readHolder                     rangeReadHolder
+}
+
+type rangeReadHolder interface {
+	Size() int64
+	Close() error
+	io.ReaderAt
+}
+
+type rangeReadHolderBytes struct {
+	bytesReader *bytes.Reader
+}
+
+type rangeReadHolderFile struct {
+	file *os.File
+}
+
+type rangeReader struct {
+	start, end, size int64
+	holder           rangeReadHolder
 }
 
 func newResponse() *SimpleResponse {
@@ -27,20 +49,21 @@ func newResponse() *SimpleResponse {
 }
 
 func (client *Client) ResponseBody(body string) *SimpleResponse {
-	response := newResponse()
-	response.body = []byte(body)
-	return response
+	return client.ResponseBodyBytes([]byte(body))
 }
 
 func (client *Client) ResponseBodyBytes(body []byte) *SimpleResponse {
-	response := newResponse()
-	response.body = body
-	return response
+	return client.ResponseReader(&rangeReadHolderBytes{bytes.NewReader(body)})
 }
 
 func (client *Client) ResponseFile(file string) *SimpleResponse {
+	reader, _ := os.Open(file)
+	return client.ResponseReader(&rangeReadHolderFile{reader})
+}
+
+func (client *Client) ResponseReader(readHolder rangeReadHolder) *SimpleResponse {
 	response := newResponse()
-	response.file = file
+	response.readHolder = readHolder
 	return response
 }
 
@@ -86,7 +109,6 @@ func (response *SimpleResponse) SetHeader(key, value string) {
 }
 
 func (response *SimpleResponse) write(writer http.ResponseWriter, client *Client) {
-	content := response.body
 	if !utils.StringIsEmpty(response.contentType) {
 		writer.Header().Set("Content-Type", response.contentType)
 	}
@@ -95,29 +117,113 @@ func (response *SimpleResponse) write(writer http.ResponseWriter, client *Client
 		writer.Header().Set(key, response.headers.Get(key))
 	}
 
-	if utils.StringIsEmpty(response.file) {
-		if utils.FileExists(response.file) {
-			buf, err := ioutil.ReadFile(response.file)
-			if err == nil {
-				content = buf
-			}
-		}
-	}
+	readerSize := response.readHolder.Size()
+	contentLength := readerSize
+	start, end := int64(0), readerSize-1
 
 	ranges := client.Header.Get("Range")
 	statusCode := response.statusCode
 	if statusCode == http.StatusOK &&
 		strings.HasPrefix(ranges, "bytes=") &&
 		strings.Contains(ranges, "-") {
-		partContent, contentRange := rangeParser(content, ranges)
-		content = partContent
-		writer.Header().Set("Content-Range", contentRange)
+		start, end = rangeParser(ranges)
+		if end < 0 {
+			end = readerSize - 1
+		}
+
+		if start >= readerSize-1 {
+			start = readerSize - 1
+		}
+		if end >= readerSize-1 {
+			end = readerSize - 1
+		}
+		if end < start {
+			end = start
+		}
+		writer.Header().Set("Content-Range",
+			fmt.Sprintf("bytes %d-%d/%d", start, end, readerSize))
 		statusCode = http.StatusPartialContent
+
+		contentLength = end - start + 1
 	}
 
+	reader := &rangeReader{
+		start, end, readerSize,
+		response.readHolder,
+	}
+	defer reader.Close()
+
 	writer.Header().Set("Accept-Ranges", "bytes")
-	writer.Header().Set("Content-Length", strconv.Itoa(len(content)))
+	writer.Header().Set("Content-Length", fmt.Sprint(contentLength))
 
 	writer.WriteHeader(statusCode)
-	writer.Write(content)
+	io.Copy(writer, reader)
+}
+
+func rangeParser(ranges string) (int64, int64) {
+	ranges = strings.Replace(ranges, "bytes=", "", 1)
+
+	middleIndex := strings.Index(ranges, "-")
+	start, err := strconv.ParseInt(ranges[:middleIndex], 10, 64)
+	if err != nil {
+		return 0, 0
+	}
+
+	end := int64(-1)
+	if middleIndex < len(ranges)-1 {
+		end, err = strconv.ParseInt(ranges[middleIndex+1:], 10, 64)
+		if err != nil {
+			return start, 0
+		}
+	}
+	return start, end
+}
+
+func (rangeReadHolderBytes *rangeReadHolderBytes) Size() int64 {
+	return rangeReadHolderBytes.bytesReader.Size()
+}
+
+func (rangeReadHolderBytes *rangeReadHolderBytes) ReadAt(p []byte, off int64) (n int, err error) {
+	return rangeReadHolderBytes.bytesReader.ReadAt(p, off)
+}
+
+func (rangeReadHolderBytes *rangeReadHolderBytes) Close() error {
+	return nil
+}
+
+func (rangeReadHolderFile *rangeReadHolderFile) Size() int64 {
+	info, err := rangeReadHolderFile.file.Stat()
+	if err != nil {
+		return 0
+	}
+	return info.Size()
+}
+
+func (rangeReadHolderFile *rangeReadHolderFile) ReadAt(p []byte, off int64) (n int, err error) {
+	return rangeReadHolderFile.file.ReadAt(p, off)
+}
+
+func (rangeReadHolderFile *rangeReadHolderFile) Close() error {
+	return rangeReadHolderFile.file.Close()
+}
+
+func (rangeReader *rangeReader) Read(b []byte) (n int, err error) {
+	if rangeReader.start >= rangeReader.size {
+		return 0, io.EOF
+	}
+
+	read, _ := rangeReader.holder.ReadAt(b, rangeReader.start)
+	newStart := rangeReader.start + int64(read)
+
+	if newStart > rangeReader.end {
+		read = int(rangeReader.end-rangeReader.start) + 1
+		rangeReader.start = rangeReader.size
+	}
+
+	rangeReader.start = newStart
+	return read, nil
+}
+
+func (rangeReader *rangeReader) Close() error {
+	return rangeReader.holder.Close()
 }

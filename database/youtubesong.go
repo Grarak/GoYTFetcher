@@ -2,7 +2,6 @@ package database
 
 import (
 	"crypto/aes"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"sync"
@@ -11,6 +10,7 @@ import (
 	"github.com/Grarak/GoYTFetcher/logger"
 	"github.com/Grarak/GoYTFetcher/utils"
 	"github.com/Grarak/GoYTFetcher/ytdl"
+	"io"
 )
 
 type YoutubeSong struct {
@@ -31,6 +31,13 @@ type YoutubeSong struct {
 	songLock  sync.Mutex
 	stateLock sync.RWMutex
 	readLock  sync.RWMutex
+}
+
+type YoutubeSongReader struct {
+	song *YoutubeSong
+	file *os.File
+	io.ReaderAt
+	io.Closer
 }
 
 func newYoutubeSong(id string) *YoutubeSong {
@@ -61,10 +68,14 @@ func (youtubeSong *YoutubeSong) setDownloading(downloading bool) {
 	youtubeSong.downloading = downloading
 }
 
-func (youtubeSong *YoutubeSong) Read() ([]byte, error) {
+func (youtubeSong *YoutubeSong) Reader() (*YoutubeSongReader, error) {
 	youtubeSong.readLock.RLock()
 	defer youtubeSong.readLock.RUnlock()
-	return ioutil.ReadFile(youtubeSong.filePath)
+	file, err := os.Open(youtubeSong.filePath)
+	if err != nil {
+		return nil, err
+	}
+	return &YoutubeSongReader{song: youtubeSong, file: file}, nil
 }
 
 func (youtubeSong *YoutubeSong) getDownloadUrl() (string, error) {
@@ -161,4 +172,26 @@ func (youtubeSong YoutubeSong) GetUniqueId() string {
 
 func (youtubeSong YoutubeSong) GetCount() int {
 	return youtubeSong.count
+}
+
+func (youtubeSongReader *YoutubeSongReader) Size() int64 {
+	youtubeSongReader.song.readLock.RLock()
+	defer youtubeSongReader.song.readLock.RUnlock()
+	info, err := youtubeSongReader.file.Stat()
+	if err != nil {
+		return 0
+	}
+	return info.Size()
+}
+
+func (youtubeSongReader *YoutubeSongReader) ReadAt(p []byte, off int64) (n int, err error) {
+	youtubeSongReader.song.readLock.RLock()
+	defer youtubeSongReader.song.readLock.RUnlock()
+	return youtubeSongReader.file.ReadAt(p, off)
+}
+
+func (youtubeSongReader *YoutubeSongReader) Close() error {
+	youtubeSongReader.song.readLock.RLock()
+	defer youtubeSongReader.song.readLock.RUnlock()
+	return youtubeSongReader.file.Close()
 }
