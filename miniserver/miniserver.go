@@ -6,18 +6,44 @@ import (
 	"strconv"
 
 	"github.com/Grarak/GoYTFetcher/utils"
+	"strings"
 )
 
 const (
-	ContentText       = "text/plain"
-	ContentHtml       = "text/html"
-	ContentJson       = "application/json"
-	ContentJavascript = "text/javascript"
-	ContentCss        = "text/css"
-	ContentXIcon      = "image/x-icon"
-	ContentSVG        = "image/svg+xml"
-	ContentWebm       = "audio/webm"
+	ContentText        = "text/plain"
+	ContentHtml        = "text/html"
+	ContentJson        = "application/json"
+	ContentJavascript  = "text/javascript"
+	ContentCss         = "text/css"
+	ContentXIcon       = "image/x-icon"
+	ContentSVG         = "image/svg+xml"
+	ContentWebm        = "audio/webm"
+	ContentOctetStream = "application/octet-stream"
+	ContentWasm        = "application/wasm"
 )
+
+var FileExtensions = [][]string{
+	{"html", ContentHtml},
+	{"js", ContentJavascript},
+	{"css", ContentCss},
+	{"ico", ContentXIcon},
+	{"svg", ContentSVG},
+	{"ogg", ContentWebm},
+	{"wasm", ContentWasm},
+}
+
+func getContentTypeForFile(file string) string {
+	index := strings.LastIndex(file, ".")
+	if index >= 0 {
+		extension := file[index+1:]
+		for _, contentType := range FileExtensions {
+			if contentType[0] == extension {
+				return contentType[1]
+			}
+		}
+	}
+	return ContentOctetStream
+}
 
 type MiniServer struct {
 	port     int

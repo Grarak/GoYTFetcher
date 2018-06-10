@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-
 	"bytes"
 	"fmt"
 	"github.com/Grarak/GoYTFetcher/utils"
@@ -58,7 +57,9 @@ func (client *Client) ResponseBodyBytes(body []byte) *SimpleResponse {
 
 func (client *Client) ResponseFile(file string) *SimpleResponse {
 	reader, _ := os.Open(file)
-	return client.ResponseReader(&rangeReadHolderFile{reader})
+	response := client.ResponseReader(&rangeReadHolderFile{reader})
+	response.contentType = getContentTypeForFile(file)
+	return response
 }
 
 func (client *Client) ResponseReader(readHolder rangeReadHolder) *SimpleResponse {

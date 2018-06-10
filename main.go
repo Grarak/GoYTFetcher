@@ -17,10 +17,19 @@ import (
 	"github.com/Grarak/GoYTFetcher/utils"
 )
 
+var indexDir string
+
 func clientHandler(client *miniserver.Client) miniserver.Response {
 	args := strings.Split(client.Url, "/")[1:]
 	if len(args) >= 3 && args[0] == "api" {
 		return api.GetResponse(args[1], args[2], args[3:], client)
+	}
+
+	if !utils.StringIsEmpty(indexDir) {
+		if utils.FileExists(indexDir + client.Url) {
+			return client.ResponseFile(indexDir + client.Url)
+		}
+		return client.ResponseFile(indexDir + "/index.html")
 	}
 
 	response := client.ResponseBody("Not found")
@@ -52,6 +61,7 @@ func main() {
 	var ytKey string
 	flag.IntVar(&port, "p", 6713, "Which port to use")
 	flag.StringVar(&ytKey, "yt", "", "Youtube Api key")
+	flag.StringVar(&indexDir, "i", "", "Directory with index.html")
 	flag.Parse()
 
 	utils.MkDir(utils.DATABASE)
