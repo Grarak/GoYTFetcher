@@ -137,10 +137,14 @@ func playlistList(client *miniserver.Client) miniserver.Response {
 		return client.CreateResponse(utils.StatusInvalid)
 	}
 
+	usersDB := database.GetDefaultDatabase().UsersDB
 	playlistsDB := database.GetDefaultDatabase().PlaylistsDB
-	playlists, err := playlistsDB.GetPlaylists(request.ApiKey, false)
-	if err == nil {
-		return client.CreateJsonResponse(playlists)
+
+	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Verified {
+		playlists, err := playlistsDB.GetPlaylists(request.ApiKey, false)
+		if err == nil {
+			return client.CreateJsonResponse(playlists)
+		}
 	}
 
 	return client.CreateResponse(utils.StatusInvalid)
