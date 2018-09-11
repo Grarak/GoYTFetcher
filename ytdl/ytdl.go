@@ -315,7 +315,7 @@ func (info *VideoInfo) Download(path, youtubeDL string) (string, error) {
 
 	output, err := utils.ExecuteCmd(youtubeDL, "--extract-audio",
 		"--audio-quality", "96k", "--audio-format",
-		"vorbis", "--output", destination, info.ID)
+		"vorbis", "--output", destination, "--", info.ID)
 	if err != nil {
 		return "", err
 	}
