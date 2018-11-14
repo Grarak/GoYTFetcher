@@ -172,7 +172,7 @@ func (youtubeDB *youtubeDBImpl) GetYoutubeSearch(searchQuery string) ([]YoutubeS
 		youtubeSearch.increaseCount()
 	}
 
-	var results []string
+	var results []YoutubeSearchResult
 	var err error
 	if loaded {
 		results = youtubeSearch.getResults()
@@ -192,13 +192,7 @@ func (youtubeDB *youtubeDBImpl) GetYoutubeSearch(searchQuery string) ([]YoutubeS
 		youtubeDB.searches.Delete(youtubeSearch.query)
 	}
 
-	youtubeSearchResults := make([]YoutubeSearchResult, 0)
-	for _, id := range results {
-		if result, e := youtubeDB.GetYoutubeInfo(id); e == nil {
-			youtubeSearchResults = append(youtubeSearchResults, result)
-		}
-	}
-	return youtubeSearchResults, err
+	return results, err
 }
 
 func (youtubeDB *youtubeDBImpl) GetYoutubeInfo(id string) (YoutubeSearchResult, error) {

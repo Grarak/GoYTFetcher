@@ -1,6 +1,7 @@
 package ytdl
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"encoding/xml"
@@ -14,6 +15,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang-collections/collections/stack"
+	"golang.org/x/net/html"
+
 	"github.com/Grarak/GoYTFetcher/logger"
 	"github.com/Grarak/GoYTFetcher/utils"
 	"github.com/PuerkitoBio/goquery"
@@ -21,6 +25,8 @@ import (
 
 const youtubeBaseURL = "https://www.youtube.com/watch"
 const youtubeInfoURL = "https://www.youtube.com/get_video_info"
+
+var searchWebSiteRegex = regexp.MustCompile("href=\"/watch\\?v=([a-z_A-Z0-9\\-]{11})\"")
 
 var jsonRegex = regexp.MustCompile("ytplayer.config = (.*?);ytplayer.load")
 var sigRegex = regexp.MustCompile("\\/s\\/([a-fA-F0-9\\.]+)")
@@ -308,6 +314,185 @@ func (info *VideoInfo) GetThumbnailURL(quality ThumbnailQuality) *url.URL {
 			info.ID, quality))
 	}
 	return u
+}
+
+func GetVideosFromSearch(searchQuery string) ([]*VideoInfo, error) {
+	searchUrl := "https://www.youtube.com/results?"
+	query := url.Values{}
+	query.Set("search_query", searchQuery)
+	searchUrl += query.Encode()
+
+	res, err := http.Get(searchUrl)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != 200 {
+		return nil, fmt.Errorf("couldn't get website")
+	}
+
+	infos := make([]*VideoInfo, 0)
+	previousLines := make([]string, 3)
+
+	reader := bufio.NewReader(res.Body)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		if len(previousLines) >= 3 {
+			previousLines = previousLines[1:]
+		}
+		previousLines = append(previousLines, line)
+
+		matches := searchWebSiteRegex.FindAllStringSubmatch(line, 1)
+		if len(matches) > 0 && len(matches[0]) > 1 {
+			id := matches[0][1]
+
+			contains := false
+			for _, info := range infos {
+				if info.ID == id {
+					contains = true
+					break
+				}
+			}
+
+			if !contains {
+				snippet := strings.Join(previousLines, "")
+				lookupStart := strings.Index(snippet, "<div class=\"yt-lockup-content\">")
+				previousLines = make([]string, 3)
+				if lookupStart >= 0 {
+					start := snippet[lookupStart:]
+					matches := searchWebSiteRegex.FindAllStringSubmatch(start, 1)
+					if len(matches) > 0 && len(matches[0]) > 1 {
+						snippetId := matches[0][1]
+						if snippetId == id {
+							xmlSnippet, err := readXmlUntilComplete(start, reader, 0, stack.New())
+							if err == nil {
+								node, err := html.Parse(bytes.NewBufferString(xmlSnippet))
+								if err == nil {
+									info, err := parseNodeToResult(snippetId, node.FirstChild.LastChild.FirstChild.FirstChild)
+									if err == nil {
+										infos = append(infos, info)
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if len(infos) == 0 {
+		return nil, fmt.Errorf("no results found")
+	}
+	return infos, nil
+}
+
+func parseNodeToResult(id string, node *html.Node) (*VideoInfo, error) {
+	info := &VideoInfo{ID: id}
+
+	for ; node != nil; node = node.NextSibling {
+		for _, attr := range node.Attr {
+			if attr.Key == "class" && strings.Trim(attr.Val, " ") == "yt-lockup-title" {
+				titleNode := node.FirstChild
+				for ; titleNode != nil; titleNode = titleNode.NextSibling {
+					switch titleNode.Data {
+					case "a":
+						for _, titleAttr := range titleNode.Attr {
+							if titleAttr.Key == "title" {
+								info.Title = titleAttr.Val
+								break
+							}
+						}
+						break
+					case "span":
+						times := strings.Split(titleNode.FirstChild.Data, ":")
+						sum := int64(0)
+						if len(times) >= 3 && len(times) <= 4 {
+							for i := 1; i < len(times); i++ {
+								timeUnit := strings.Trim(times[i], " ")
+								if len(timeUnit) >= 3 {
+									timeUnit = timeUnit[:2]
+								}
+								convertedTime, err := strconv.Atoi(timeUnit)
+								if err != nil {
+									sum = 0
+									break
+								}
+								sum *= 60
+								sum += int64(convertedTime)
+							}
+							info.Duration = time.Duration(sum * 1000 * 1000 * 1000)
+						}
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if len(info.Title) > 0 && info.Duration > 0 {
+		return info, nil
+	}
+	return info, fmt.Errorf("couldn't parse xml")
+}
+
+func readXmlUntilComplete(start string, reader *bufio.Reader, position int, tags *stack.Stack) (string, error) {
+	next := func(position int) (string, error) {
+		line, err := reader.ReadString('\n')
+		if err == io.EOF {
+			return start, err
+		}
+		return readXmlUntilComplete(start+line, reader, position, tags)
+	}
+
+	for i := position; i < len(start); i++ {
+		if rune(start[i]) == rune('<') {
+			if i+1 == len(start) {
+				return next(i)
+			}
+			isClosing := rune(start[i+1]) == rune('/')
+			end := i + 1
+			if isClosing {
+				end++
+			}
+			name := make([]byte, 0)
+			stopNameAppending := false
+			for ; end < len(start); end++ {
+				if rune(start[end]) == rune('>') {
+					if isClosing {
+						previousName, ok := tags.Pop().(string)
+						if !ok || previousName != string(name) {
+							return start, fmt.Errorf("couldn't parse xml")
+						}
+						if tags.Len() == 0 {
+							return start[:end+1], nil
+						}
+					} else {
+						tags.Push(string(name))
+					}
+					name = nil
+					break
+				} else {
+					if rune(start[end]) == rune(' ') {
+						stopNameAppending = true
+					}
+
+					if !stopNameAppending {
+						name = append(name, byte(start[end]))
+					}
+				}
+			}
+			if name != nil {
+				return next(i)
+			}
+		}
+	}
+	return start, fmt.Errorf("couldn't parse xml")
 }
 
 func (info *VideoInfo) Download(path, youtubeDL string) (string, error) {

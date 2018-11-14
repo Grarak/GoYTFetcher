@@ -2,47 +2,74 @@
 
 
 [[projects]]
+  digest = "1:bff7b2530f02b143623e260c11df5cbf34e0faeaca6aa001a8be31f333518ca9"
   name = "github.com/PuerkitoBio/goquery"
   packages = ["."]
+  pruneopts = "UT"
   revision = "a86ea073017a6beddef78c8659e7224e8ca634b0"
   version = "v1.4.0"
 
 [[projects]]
+  digest = "1:66b3310cf22cdc96c35ef84ede4f7b9b370971c4025f394c89a2638729653b11"
   name = "github.com/andybalholm/cascadia"
   packages = ["."]
+  pruneopts = "UT"
   revision = "901648c87902174f774fac311d7f176f8647bdaa"
   version = "v1.0.0"
 
 [[projects]]
+  branch = "master"
+  digest = "1:4a8ed9b8cf22bd03bee5d74179fa06a282e4a73b6de949f7a865ff56cd2537e0"
+  name = "github.com/golang-collections/collections"
+  packages = ["stack"]
+  pruneopts = "UT"
+  revision = "604e922904d35e97f98a774db7881f049cd8d970"
+
+[[projects]]
+  digest = "1:ee0845ea64262e3d1a6e2eab768fcb2008a0c8e571b7a3bebea554a1c031aeeb"
   name = "github.com/mattn/go-sqlite3"
   packages = ["."]
+  pruneopts = "UT"
   revision = "6c771bb9887719704b210e87e934f08be014bdb1"
   version = "v1.6.0"
 
 [[projects]]
+  digest = "1:5b3b29ce0e569f62935d9541dff2e16cc09df981ebde48e82259076a73a3d0c7"
   name = "github.com/op/go-logging"
   packages = ["."]
+  pruneopts = "UT"
   revision = "b2cb9fa56473e98db8caba80237377e83fe44db5"
   version = "v1"
 
 [[projects]]
   branch = "master"
+  digest = "1:f92f6956e4059f6a3efc14924d2dd58ba90da25cc57fe07ae3779ef2f5e0c5f2"
   name = "golang.org/x/crypto"
   packages = ["pbkdf2"]
+  pruneopts = "UT"
   revision = "1a580b3eff7814fc9b40602fd35256c63b50f491"
 
 [[projects]]
   branch = "master"
+  digest = "1:0516820422512741f45f4e72d4ade116c1d1bf3bb2d846001d42f6787ec00f22"
   name = "golang.org/x/net"
   packages = [
     "html",
-    "html/atom"
+    "html/atom",
   ]
+  pruneopts = "UT"
   revision = "57065200b4b034a1c8ad54ff77069408c2218ae6"
 
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "95f144f20c22ac8194859eda079b77c5a2477236520ba294c0c19615ab3c55b8"
+  input-imports = [
+    "github.com/PuerkitoBio/goquery",
+    "github.com/golang-collections/collections/stack",
+    "github.com/mattn/go-sqlite3",
+    "github.com/op/go-logging",
+    "golang.org/x/crypto/pbkdf2",
+    "golang.org/x/net/html",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
