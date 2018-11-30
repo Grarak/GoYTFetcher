@@ -66,8 +66,8 @@ func main() {
 	flag.StringVar(&indexDir, "i", "", "Directory with index.html")
 	flag.Parse()
 
-	utils.MkDir(utils.DATABASE)
-	utils.MkDir(utils.YOUTUBE_DIR)
+	utils.Panic(utils.MkDir(utils.DATABASE))
+	utils.Panic(utils.MkDir(utils.YOUTUBE_DIR))
 
 	databaseInstance := database.GetDatabase(utils.GenerateRandom(16), ytKey)
 
@@ -81,7 +81,9 @@ func main() {
 			logger.I(fmt.Sprintf("Captured %s, killing...", sig))
 			server.StopListening()
 
-			databaseInstance.Close()
+			if err := databaseInstance.Close(); err != nil {
+				logger.E(fmt.Sprintf("Failed to close database %s", err))
+			}
 
 			cleanup <- true
 		}

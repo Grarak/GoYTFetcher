@@ -498,8 +498,7 @@ func readXmlUntilComplete(start string, reader *bufio.Reader, position int, tags
 func (info *VideoInfo) Download(path, youtubeDL string) (string, error) {
 	destination := path + "/" + info.ID + ".%(ext)s"
 
-	output, err := utils.ExecuteCmd(youtubeDL, "--extract-audio",
-		"--audio-quality", "96k", "--audio-format",
+	output, err := utils.ExecuteCmd(youtubeDL, "--extract-audio", "--audio-format",
 		"vorbis", "--output", destination, "--", info.ID)
 	if err != nil {
 		return "", err
