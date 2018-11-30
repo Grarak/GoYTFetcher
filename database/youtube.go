@@ -3,6 +3,7 @@ package database
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/Grarak/GoYTFetcher/logger"
 	"io/ioutil"
 	"os/exec"
 	"strings"
@@ -48,7 +49,7 @@ type youtubeDBImpl struct {
 	idRanking *rankingTree
 	ids       sync.Map
 
-	deleteCacheLock sync.RWMutex
+	deleteCacheLock sync.Mutex
 
 	charts            []YoutubeSearchResult
 	chartsLock        sync.RWMutex
@@ -127,9 +128,11 @@ func (youtubeDB *youtubeDBImpl) FetchYoutubeSong(id string) (string, string, err
 		link, _ = youtubeSong.getDownloadUrl()
 		if !utils.StringIsEmpty(link) {
 			go func() {
-				youtubeDB.deleteCacheLock.RLock()
-				defer youtubeDB.deleteCacheLock.RUnlock()
-				youtubeSong.download(youtubeDB)
+				youtubeDB.deleteCacheLock.Lock()
+				defer youtubeDB.deleteCacheLock.Unlock()
+				if err := youtubeSong.download(youtubeDB); err != nil {
+					logger.E(fmt.Sprintf("Failed to download %s %s", youtubeSong.id, err))
+				}
 			}()
 		}
 	}

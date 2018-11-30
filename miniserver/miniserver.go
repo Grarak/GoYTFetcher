@@ -18,7 +18,7 @@ const (
 	ContentCss         = "text/css"
 	ContentXIcon       = "image/x-icon"
 	ContentSVG         = "image/svg+xml"
-	ContentWebm        = "audio/webm"
+	ContentOgg         = "audio/ogg"
 	ContentOctetStream = "application/octet-stream"
 	ContentWasm        = "application/wasm"
 )
@@ -29,7 +29,7 @@ var FileExtensions = [][]string{
 	{"css", ContentCss},
 	{"ico", ContentXIcon},
 	{"svg", ContentSVG},
-	{"ogg", ContentWebm},
+	{"ogg", ContentOgg},
 	{"wasm", ContentWasm},
 }
 

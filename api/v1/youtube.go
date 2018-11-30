@@ -71,7 +71,7 @@ func youtubeGet(client *miniserver.Client) miniserver.Response {
 		reader, err := youtubeSong.Reader()
 		if err == nil {
 			response := client.ResponseReader(reader)
-			response.SetContentType(miniserver.ContentWebm)
+			response.SetContentType(miniserver.ContentOgg)
 			return response
 		}
 	}
