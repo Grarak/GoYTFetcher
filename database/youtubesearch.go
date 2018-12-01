@@ -230,7 +230,7 @@ func (youtubeDB *youtubeDBImpl) getYoutubeVideoInfoFromApi(id string) (YoutubeSe
 	}
 	item := response.Items[0]
 	return YoutubeSearchResult{item.Snippet.Title, id,
-		item.Snippet.Thumbnails.Default.Url,
+		item.Snippet.Thumbnails.Medium.Url,
 		utils.FormatMinutesSeconds(
 			parseYoutubeApiTime(item.ContentDetails.Duration))}, nil
 }
@@ -276,7 +276,7 @@ func getYoutubeCharts(apiKey string) ([]YoutubeSearchResult, error) {
 	var results []YoutubeSearchResult
 	for _, item := range response.Items {
 		result := YoutubeSearchResult{item.Snippet.Title, item.Id,
-			item.Snippet.Thumbnails.Default.Url,
+			item.Snippet.Thumbnails.Medium.Url,
 			utils.FormatMinutesSeconds(
 				parseYoutubeApiTime(item.ContentDetails.Duration))}
 		results = append(results, result)

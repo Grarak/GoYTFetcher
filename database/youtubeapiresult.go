@@ -12,7 +12,7 @@ type YoutubeThumbnail struct {
 }
 
 type YoutubeThumbnails struct {
-	Default YoutubeThumbnail `json:"default"`
+	Medium YoutubeThumbnail `json:"medium"`
 }
 
 type YoutubeSnippet struct {
