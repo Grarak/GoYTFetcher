@@ -98,7 +98,7 @@ func (youtubeSearch *YoutubeSearch) getSearchFromWebsite(youtubeDB *youtubeDBImp
 			minutes := int(info.Duration.Minutes())
 
 			results[i] = YoutubeSearchResult{info.Title, info.ID,
-				info.GetThumbnailURL(ytdl.ThumbnailQualityDefault).String(),
+				info.GetThumbnailURL(ytdl.ThumbnailQualityMedium).String(),
 				utils.FormatMinutesSeconds(minutes, seconds)}
 
 			if youtubeDB.idRanking.getSize() < 1000 {
@@ -209,7 +209,7 @@ func (youtubeDB *youtubeDBImpl) getYoutubeVideoInfoFromYtdl(id string) (YoutubeS
 	seconds := int(info.Duration.Seconds()) % 60
 	minutes := int(info.Duration.Minutes())
 	return YoutubeSearchResult{info.Title, id,
-		info.GetThumbnailURL(ytdl.ThumbnailQualityDefault).String(),
+		info.GetThumbnailURL(ytdl.ThumbnailQualityMedium).String(),
 		utils.FormatMinutesSeconds(minutes, seconds)}, nil
 }
 
