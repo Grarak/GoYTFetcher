@@ -236,39 +236,15 @@ func (youtubeDB *youtubeDBImpl) getYoutubeVideoInfoFromApi(id string) (YoutubeSe
 }
 
 func getYoutubeCharts(apiKey string) ([]YoutubeSearchResult, error) {
-	categoriesUrl := "https://www.googleapis.com/youtube/v3/videoCategories?"
-	query := url.Values{}
-	query.Set("part", "snippet")
-	query.Set("regionCode", "US")
-	query.Set("key", apiKey)
-
-	response, err := getYoutubeApiResponseItems(categoriesUrl + query.Encode())
-	if err != nil {
-		return nil, err
-	}
-
-	var musicCategoryId string
-	for _, item := range response.Items {
-		if item.Snippet.Title == "Music" {
-			musicCategoryId = item.Id
-			break
-		}
-	}
-
-	if utils.StringIsEmpty(musicCategoryId) {
-		return nil, fmt.Errorf("couldn't retrieve category id")
-	}
-
 	infoUrl := "https://www.googleapis.com/youtube/v3/videos?"
-	query = url.Values{}
+	query := url.Values{}
 	query.Set("chart", "mostPopular")
 	query.Set("part", "snippet,contentDetails")
 	query.Set("maxResults", "30")
 	query.Set("regionCode", "US")
 	query.Set("key", apiKey)
-	query.Set("videoCategoryId", musicCategoryId)
 
-	response, err = getYoutubeApiResponseItems(infoUrl + query.Encode())
+	response, err := getYoutubeApiResponseItems(infoUrl + query.Encode())
 	if err != nil {
 		return nil, err
 	}
