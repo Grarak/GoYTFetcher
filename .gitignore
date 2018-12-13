@@ -4,6 +4,7 @@
 # IntelliJ project files
 /.idea/*.xml
 !/.idea/modules.xml
+/.idea/inspectionProfiles
 *.iml
 out
 !app.iml

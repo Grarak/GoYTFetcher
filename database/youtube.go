@@ -241,7 +241,7 @@ func (youtubeDB *youtubeDBImpl) GetYoutubeCharts() ([]YoutubeSearchResult, error
 		youtubeDB.chartsLock.Lock()
 		defer youtubeDB.chartsLock.Unlock()
 
-		charts, err := getYoutubeCharts(youtubeDB.ytKey)
+		charts, err := getYoutubeCharts()
 		if err != nil {
 			return nil, err
 		}

@@ -19,6 +19,7 @@ import (
 )
 
 var searchApiRegex = regexp.MustCompile("\"videoId\":\\s+\"([a-z_A-Z0-9\\-]{11})\"")
+var youtubeApiKeyRegex = regexp.MustCompile("\"INNERTUBE_API_KEY\"[\\s]*:[\\s]*\"([^\"]+)\"")
 
 type YoutubeSearch struct {
 	query   string
@@ -235,29 +236,35 @@ func (youtubeDB *youtubeDBImpl) getYoutubeVideoInfoFromApi(id string) (YoutubeSe
 			parseYoutubeApiTime(item.ContentDetails.Duration))}, nil
 }
 
-func getYoutubeCharts(apiKey string) ([]YoutubeSearchResult, error) {
-	infoUrl := "https://www.googleapis.com/youtube/v3/videos?"
-	query := url.Values{}
-	query.Set("chart", "mostPopular")
-	query.Set("part", "snippet,contentDetails")
-	query.Set("maxResults", "30")
-	query.Set("regionCode", "US")
-	query.Set("key", apiKey)
-
-	response, err := getYoutubeApiResponseItems(infoUrl + query.Encode())
+func getYoutubeCharts() ([]YoutubeSearchResult, error) {
+	trendingUrl := "https://charts.youtube.com/us"
+	res, err := http.Get(trendingUrl)
 	if err != nil {
 		return nil, err
 	}
+	defer res.Body.Close()
 
-	var results []YoutubeSearchResult
-	for _, item := range response.Items {
-		result := YoutubeSearchResult{item.Snippet.Title, item.Id,
-			item.Snippet.Thumbnails.Medium.Url,
-			utils.FormatMinutesSeconds(
-				parseYoutubeApiTime(item.ContentDetails.Duration))}
-		results = append(results, result)
+	reader := bufio.NewReader(res.Body)
+	apiKey := ""
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			break
+		}
+
+		if strings.Contains(line, "INNERTUBE_API_KEY") {
+			matches := youtubeApiKeyRegex.FindAllStringSubmatch(line, 1)
+			if len(matches) > 0 && len(matches[0]) > 1 {
+				apiKey = matches[0][1]
+				break
+			}
+		}
 	}
-	return results, nil
+
+	if utils.StringIsEmpty(apiKey) {
+		return nil, fmt.Errorf("couldn't retrieve api key")
+	}
+	return getYoutubeChartsFromApi(apiKey)
 }
 
 func (youtubeSearch *YoutubeSearch) getResults() []YoutubeSearchResult {
