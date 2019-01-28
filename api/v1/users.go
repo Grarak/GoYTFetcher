@@ -1,6 +1,7 @@
 package v1
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -71,6 +72,8 @@ func usersSetVerification(client *miniserver.Client) miniserver.Response {
 
 	usersDB := database.GetDefaultDatabase().UsersDB
 	if requester, err := usersDB.FindUserByApiKey(request.ApiKey); err == nil && *requester.Admin {
+		logger.I(fmt.Sprintf("%s setting verification of %s to %v", requester.Name,
+			request.Name, *request.Verified))
 		err = usersDB.SetVerificationUser(request)
 		if err == nil {
 			return client.CreateResponse(utils.StatusNoError)
